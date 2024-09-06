@@ -1,0 +1,7 @@
+Package: music-up
+Version: 1.0
+Section: base
+Priority: optional
+Architecture: amd64
+Maintainer: Dein Name <deinemail@example.com>
+Description: MusicUp - Ein Musik-Management-Tool für Linux
