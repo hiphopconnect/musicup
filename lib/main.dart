@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
   final JsonService jsonService;
   final ConfigManager configManager;
 
-  MyApp({required this.jsonService, required this.configManager});
+  const MyApp({super.key, required this.jsonService, required this.configManager});
 
   @override
   Widget build(BuildContext context) {

@@ -51,19 +51,25 @@ class Album {
 
 class Track {
   String title;
+  String trackNumber;
 
-  Track({required this.title});
+  Track({required this.title, required this.trackNumber});
 
   factory Track.fromMap(Map<String, dynamic> json) {
     return Track(
       title: json['title'] ?? 'Unknown',
+      trackNumber: json['trackNumber'] ?? '00',
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
       'title': title,
+      'trackNumber': trackNumber,
     };
   }
-}
 
+  String getFormattedTrackNumber() {
+    return trackNumber.padLeft(2, '0');
+  }
+}

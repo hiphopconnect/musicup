@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:music_up/main.dart';
 import 'package:music_up/services/config_manager.dart';

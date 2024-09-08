@@ -20,7 +20,10 @@ class ConfigManager {
 
   Future<void> saveConfig() async {
     if (_prefs != null) {
-      await _prefs!.commit();
+      String? path = getJsonPath();
+      if (path != null) {
+        await _prefs!.setString(jsonPathKey, path);
+      }
     }
   }
 }

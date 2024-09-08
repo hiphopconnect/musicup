@@ -5,19 +5,46 @@ import '../services/json_service.dart';
 class SettingsScreen extends StatefulWidget {
   final JsonService jsonService;
 
-  SettingsScreen({required this.jsonService});
+  const SettingsScreen({super.key, required this.jsonService});
 
   @override
-  _SettingsScreenState createState() => _SettingsScreenState();
+  SettingsScreenState createState() => SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class SettingsScreenState extends State<SettingsScreen> {
   TextEditingController jsonPathController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     jsonPathController.text = widget.jsonService.configManager.getJsonPath() ?? '';
+  }
+
+  Future<void> _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['json'],  // Hier kannst du die erlaubten Dateitypen festlegen
+    );
+
+    if (result != null && result.files.single.path != null) {
+      String? selectedPath = result.files.single.path;
+      if (selectedPath != null) {
+        setState(() {
+          jsonPathController.text = selectedPath;
+        });
+        await widget.jsonService.configManager.setJsonPath(selectedPath);
+        await widget.jsonService.configManager.saveConfig();
+
+        // Check if the widget is still mounted before accessing the context
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('JSON path saved!')),
+        );
+
+        Navigator.pop(context, true);  // Zurück zum MainScreen, um die Alben neu zu laden
+      }
+    }
   }
 
   Future<void> _exportFile(String fileType) async {
@@ -35,6 +62,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await widget.jsonService.exportCsv(filePath);
       }
 
+      // Check if the widget is still mounted before accessing the context
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('$fileType file exported: $filePath')),
       );
@@ -51,11 +81,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       String? selectedPath = result.files.single.path;
       if (selectedPath != null) {
         try {
-          await widget.jsonService.importAlbums(selectedPath);  // Import-Methode aufrufen
+          await widget.jsonService.importAlbums(selectedPath);
+
+          // Check if the widget is still mounted before accessing the context
+          if (!mounted) return;
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('$fileType file imported: $selectedPath')),
           );
         } catch (e) {
+          if (!mounted) return;
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Failed to import: $e')),
           );
@@ -68,73 +104,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Settings'),
+        title: const Text('Settings'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Path input and Save Path button in a row
             Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: jsonPathController,
-                    decoration: InputDecoration(labelText: 'JSON File Path'),
+                    decoration: const InputDecoration(labelText: 'JSON File Path'),
                   ),
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: 16),
                 ElevatedButton(
-                  onPressed: () {
-                    widget.jsonService.configManager.setJsonPath(jsonPathController.text);
-                    widget.jsonService.configManager.saveConfig();
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('JSON path saved!')),
-                    );
-                  },
-                  child: Text('Save Path'),
+                  onPressed: _pickFile,
+                  child: const Text('Select File'),
                 ),
               ],
             ),
-            SizedBox(height: 16),
-
-            // Export buttons in a horizontal row
+            const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton(
                   onPressed: () => _exportFile('json'),
-                  child: Text('Export as JSON'),
+                  child: const Text('Export as JSON'),
                 ),
                 ElevatedButton(
                   onPressed: () => _exportFile('xml'),
-                  child: Text('Export as XML'),
+                  child: const Text('Export as XML'),
                 ),
                 ElevatedButton(
                   onPressed: () => _exportFile('csv'),
-                  child: Text('Export as CSV'),
+                  child: const Text('Export as CSV'),
                 ),
               ],
             ),
-
-            SizedBox(height: 16),
-
-            // Import buttons in a horizontal row
+            const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton(
                   onPressed: () => _importFile('json'),
-                  child: Text('Import JSON'),
+                  child: const Text('Import JSON'),
                 ),
                 ElevatedButton(
                   onPressed: () => _importFile('xml'),
-                  child: Text('Import XML'),
+                  child: const Text('Import XML'),
                 ),
                 ElevatedButton(
                   onPressed: () => _importFile('csv'),
-                  child: Text('Import CSV'),
+                  child: const Text('Import CSV'),
                 ),
               ],
             ),

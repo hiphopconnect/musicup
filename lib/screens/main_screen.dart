@@ -3,21 +3,25 @@ import 'package:music_up/models/album_model.dart';
 import 'package:music_up/services/json_service.dart';
 import 'package:music_up/screens/add_album_screen.dart';
 import 'package:music_up/screens/edit_album_screen.dart';
+import 'package:music_up/screens/settings_screen.dart';  // Importiere die SettingsScreen
 
 class MainScreen extends StatefulWidget {
   final JsonService jsonService;
 
-  MainScreen({required this.jsonService});
+  const MainScreen({super.key, required this.jsonService});
 
   @override
-  _MainScreenState createState() => _MainScreenState();
+  MainScreenState createState() => MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class MainScreenState extends State<MainScreen> {
   List<Album> _albums = [];
   List<Album> _filteredAlbums = [];
   bool _isLoading = true;
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
+
+  // New variable for search category
+  String _searchCategory = 'Album';  // Default search category is Album
 
   @override
   void initState() {
@@ -35,12 +39,15 @@ class _MainScreenState extends State<MainScreen> {
   void _loadAlbums() async {
     try {
       List<Album> albums = await widget.jsonService.loadAlbums();
+
+      if (!mounted) return;
       setState(() {
         _albums = albums;
         _filteredAlbums = albums;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -52,14 +59,26 @@ class _MainScreenState extends State<MainScreen> {
 
   void _filterAlbums() {
     String query = _searchController.text.toLowerCase();
+
     setState(() {
       _filteredAlbums = _albums.where((album) {
-        return album.name.toLowerCase().contains(query) ||
-            album.artist.toLowerCase().contains(query);
+        switch (_searchCategory) {
+          case 'Artist':
+          // Search only by artist name
+            return album.artist.toLowerCase().contains(query);
+          case 'Song':
+          // Search only by song titles
+            return album.tracks.any((track) => track.title.toLowerCase().contains(query));
+          case 'Album':
+          default:
+          // Default case: Search by album name
+            return album.name.toLowerCase().contains(query);
+        }
       }).toList();
     });
   }
 
+  // Define the missing _deleteAlbum method
   void _deleteAlbum(Album album) async {
     setState(() {
       _albums.remove(album);
@@ -72,14 +91,14 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("MusicUp"),
+        title: const Text("MusicUp"),
         actions: [
           IconButton(
-            icon: Icon(Icons.add),
+            icon: const Icon(Icons.add),
             onPressed: () async {
               final newAlbum = await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => AddAlbumScreen()),
+                MaterialPageRoute(builder: (context) => const AddAlbumScreen()),
               );
               if (newAlbum != null && newAlbum is Album) {
                 setState(() {
@@ -91,9 +110,18 @@ class _MainScreenState extends State<MainScreen> {
             },
           ),
           IconButton(
-            icon: Icon(Icons.settings),
+            icon: const Icon(Icons.settings),
             onPressed: () {
-              Navigator.pushNamed(context, '/settings');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SettingsScreen(jsonService: widget.jsonService),
+                ),
+              ).then((value) {
+                if (value == true) {
+                  _loadAlbums();  // Alben nach dem Ändern der Einstellungen neu laden
+                }
+              });
             },
           ),
         ],
@@ -102,20 +130,43 @@ class _MainScreenState extends State<MainScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: "Search...",
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
+            child: Row(
+              children: [
+                // Dropdown for search category
+                DropdownButton<String>(
+                  value: _searchCategory,
+                  items: const [
+                    DropdownMenuItem(value: 'Album', child: Text('Album')),
+                    DropdownMenuItem(value: 'Artist', child: Text('Artist')),
+                    DropdownMenuItem(value: 'Song', child: Text('Song')),
+                  ],
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _searchCategory = newValue!;
+                      _filterAlbums(); // Apply filter after changing category
+                    });
+                  },
+                ),
+                const SizedBox(width: 10),  // Add some space between dropdown and search field
+                // Search field
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      hintText: "Search...",
+                      prefixIcon: Icon(Icons.search),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(
             child: _isLoading
-                ? Center(child: CircularProgressIndicator())
+                ? const Center(child: CircularProgressIndicator())
                 : _filteredAlbums.isEmpty
-                ? Center(child: Text('No albums found'))
+                ? const Center(child: Text('No albums found'))
                 : ListView.builder(
               itemCount: _filteredAlbums.length,
               itemBuilder: (context, index) {
@@ -127,7 +178,7 @@ class _MainScreenState extends State<MainScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: Icon(Icons.edit),
+                        icon: const Icon(Icons.edit),
                         onPressed: () async {
                           final editedAlbum = await Navigator.push(
                             context,
@@ -142,13 +193,12 @@ class _MainScreenState extends State<MainScreen> {
                               _albums[index] = editedAlbum;
                               _filteredAlbums[index] = editedAlbum;
                             });
-                            await widget.jsonService
-                                .saveAlbums(_albums);
+                            await widget.jsonService.saveAlbums(_albums);
                           }
                         },
                       ),
                       IconButton(
-                        icon: Icon(Icons.delete),
+                        icon: const Icon(Icons.delete),
                         onPressed: () {
                           _deleteAlbum(album);
                         },
@@ -159,19 +209,24 @@ class _MainScreenState extends State<MainScreen> {
                     showDialog(
                       context: context,
                       builder: (BuildContext context) {
+                        List<Track> sortedTracks = List.from(album.tracks)
+                          ..sort((a, b) => int.parse(a.trackNumber).compareTo(int.parse(b.trackNumber)));
                         return AlertDialog(
                           title: Text(album.name),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: album.tracks.map((track) {
-                              return ListTile(
-                                title: Text(track.title),
-                              );
-                            }).toList(),
+                          content: SingleChildScrollView(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: sortedTracks.map((track) {
+                                return ListTile(
+                                  leading: Text("Track ${track.trackNumber.padLeft(2, '0')}"),
+                                  title: Text(track.title),
+                                );
+                              }).toList(),
+                            ),
                           ),
                           actions: [
                             TextButton(
-                              child: Text("Close"),
+                              child: const Text("Close"),
                               onPressed: () {
                                 Navigator.of(context).pop();
                               },

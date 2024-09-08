@@ -4,13 +4,13 @@ import 'package:music_up/models/album_model.dart';
 class EditAlbumScreen extends StatefulWidget {
   final Album album;
 
-  EditAlbumScreen({required this.album});
+  const EditAlbumScreen({super.key, required this.album});
 
   @override
-  _EditAlbumScreenState createState() => _EditAlbumScreenState();
+  EditAlbumScreenState createState() => EditAlbumScreenState();
 }
 
-class _EditAlbumScreenState extends State<EditAlbumScreen> {
+class EditAlbumScreenState extends State<EditAlbumScreen> {
   late TextEditingController nameController;
   late TextEditingController artistController;
   late TextEditingController genreController;
@@ -29,16 +29,18 @@ class _EditAlbumScreenState extends State<EditAlbumScreen> {
     isDigital = widget.album.digital;
     selectedYear = widget.album.year;
 
-    // Generating a list of years starting from the current year
     final currentYear = DateTime.now().year;
     years = List.generate(100, (index) => (currentYear - index).toString());
+
+    // Sort tracks by trackNumber to ensure correct order
+    widget.album.tracks.sort((a, b) => int.parse(a.trackNumber).compareTo(int.parse(b.trackNumber)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Edit Album"),
+        title: const Text("Edit Album"),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -47,18 +49,18 @@ class _EditAlbumScreenState extends State<EditAlbumScreen> {
             children: [
               TextFormField(
                 controller: nameController,
-                decoration: InputDecoration(labelText: "Name"),
+                decoration: const InputDecoration(labelText: "Name"),
               ),
               TextFormField(
                 controller: artistController,
-                decoration: InputDecoration(labelText: "Artist"),
+                decoration: const InputDecoration(labelText: "Artist"),
               ),
               TextFormField(
                 controller: genreController,
-                decoration: InputDecoration(labelText: "Genre"),
+                decoration: const InputDecoration(labelText: "Genre"),
               ),
               DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: "Year"),
+                decoration: const InputDecoration(labelText: "Year"),
                 value: selectedYear,
                 onChanged: (String? newValue) {
                   setState(() {
@@ -73,14 +75,15 @@ class _EditAlbumScreenState extends State<EditAlbumScreen> {
                 }).toList(),
               ),
               DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: "Medium"),
+                decoration: const InputDecoration(labelText: "Medium"),
                 value: selectedMedium,
                 onChanged: (String? newValue) {
                   setState(() {
                     selectedMedium = newValue;
                   });
                 },
-                items: <String>['Vinyl', 'CD', 'Cassette', 'Digital']
+                items: <String>['Vinyl', 'CD', 'Cassette', 'Digital', 'Unknown']
+                    .toSet()  // Ensure unique values
                     .map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
@@ -89,7 +92,7 @@ class _EditAlbumScreenState extends State<EditAlbumScreen> {
                 }).toList(),
               ),
               DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: "Digital"),
+                decoration: const InputDecoration(labelText: "Digital"),
                 value: isDigital != null ? (isDigital! ? "Yes" : "No") : null,
                 onChanged: (String? newValue) {
                   setState(() {
@@ -103,11 +106,41 @@ class _EditAlbumScreenState extends State<EditAlbumScreen> {
                   );
                 }).toList(),
               ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: widget.album.tracks.length,
+                  itemBuilder: (context, index) {
+                    final track = widget.album.tracks[index];
+                    return ListTile(
+                      leading: Text("Track ${track.trackNumber}"),
+                      title: TextFormField(
+                        initialValue: track.title,
+                        onChanged: (value) {
+                          setState(() {
+                            track.title = value;
+                          });
+                        },
+                        decoration: const InputDecoration(
+                          labelText: 'Track Title',
+                        ),
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () {
+                          setState(() {
+                            widget.album.tracks.removeAt(index);
+                          });
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
               ElevatedButton(
                 onPressed: () {
                   if (selectedMedium == null || isDigital == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Please select all fields")));
+                        const SnackBar(content: Text("Please select all fields")));
                   } else {
                     Album editedAlbum = Album(
                       id: widget.album.id,
@@ -122,7 +155,7 @@ class _EditAlbumScreenState extends State<EditAlbumScreen> {
                     Navigator.pop(context, editedAlbum);
                   }
                 },
-                child: Text("Save Album"),
+                child: const Text("Save Album"),
               ),
             ],
           ),

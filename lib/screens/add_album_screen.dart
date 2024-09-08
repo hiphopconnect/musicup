@@ -3,11 +3,13 @@ import 'package:music_up/models/album_model.dart';
 import 'package:uuid/uuid.dart';
 
 class AddAlbumScreen extends StatefulWidget {
+  const AddAlbumScreen({super.key});
+
   @override
-  _AddAlbumScreenState createState() => _AddAlbumScreenState();
+  AddAlbumScreenState createState() => AddAlbumScreenState();
 }
 
-class _AddAlbumScreenState extends State<AddAlbumScreen> {
+class AddAlbumScreenState extends State<AddAlbumScreen> {
   final nameController = TextEditingController();
   final artistController = TextEditingController();
   final genreController = TextEditingController();
@@ -21,7 +23,7 @@ class _AddAlbumScreenState extends State<AddAlbumScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Add Album"),
+        title: const Text("Add Album"),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -30,18 +32,18 @@ class _AddAlbumScreenState extends State<AddAlbumScreen> {
             children: [
               TextFormField(
                 controller: nameController,
-                decoration: InputDecoration(labelText: "Name"),
+                decoration: const InputDecoration(labelText: "Name"),
               ),
               TextFormField(
                 controller: artistController,
-                decoration: InputDecoration(labelText: "Artist"),
+                decoration: const InputDecoration(labelText: "Artist"),
               ),
               TextFormField(
                 controller: genreController,
-                decoration: InputDecoration(labelText: "Genre"),
+                decoration: const InputDecoration(labelText: "Genre"),
               ),
               DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: "Year"),
+                decoration: const InputDecoration(labelText: "Year"),
                 value: selectedYear,
                 onChanged: (String? newValue) {
                   setState(() {
@@ -59,7 +61,7 @@ class _AddAlbumScreenState extends State<AddAlbumScreen> {
                 }).toList(),
               ),
               DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: "Medium"),
+                decoration: const InputDecoration(labelText: "Medium"),
                 value: selectedMedium,
                 onChanged: (String? newValue) {
                   setState(() {
@@ -75,7 +77,7 @@ class _AddAlbumScreenState extends State<AddAlbumScreen> {
                 }).toList(),
               ),
               DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: "Digital"),
+                decoration: const InputDecoration(labelText: "Digital"),
                 value: isDigital != null ? (isDigital! ? "Yes" : "No") : null,
                 onChanged: (String? newValue) {
                   setState(() {
@@ -91,15 +93,16 @@ class _AddAlbumScreenState extends State<AddAlbumScreen> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  _addTrack(); // Add track button
+                  _addTrack();
                 },
-                child: Text("Add Track"),
+                child: const Text("Add Track"),
               ),
               Expanded(
                 child: ListView.builder(
                   itemCount: tracks.length,
                   itemBuilder: (context, index) {
                     return ListTile(
+                      leading: Text('Track ${tracks[index].trackNumber}'),
                       title: TextFormField(
                         initialValue: tracks[index].title,
                         onChanged: (value) {
@@ -107,12 +110,12 @@ class _AddAlbumScreenState extends State<AddAlbumScreen> {
                             tracks[index].title = value;
                           });
                         },
-                        decoration: InputDecoration(
-                          labelText: 'Track ${index + 1}',
+                        decoration: const InputDecoration(
+                          labelText: 'Track Title',
                         ),
                       ),
                       trailing: IconButton(
-                        icon: Icon(Icons.delete),
+                        icon: const Icon(Icons.delete),
                         onPressed: () {
                           setState(() {
                             tracks.removeAt(index);
@@ -127,9 +130,9 @@ class _AddAlbumScreenState extends State<AddAlbumScreen> {
                 onPressed: () {
                   if (selectedMedium == null || isDigital == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Please select all fields")));
+                        const SnackBar(content: Text("Please select all fields")));
                   } else {
-                    var uuid = Uuid();
+                    var uuid = const Uuid();
                     Album newAlbum = Album(
                       id: uuid.v4(),
                       name: nameController.text,
@@ -143,7 +146,7 @@ class _AddAlbumScreenState extends State<AddAlbumScreen> {
                     Navigator.pop(context, newAlbum);
                   }
                 },
-                child: Text("Save Album"),
+                child: const Text("Save Album"),
               ),
             ],
           ),
@@ -154,7 +157,9 @@ class _AddAlbumScreenState extends State<AddAlbumScreen> {
 
   void _addTrack() {
     setState(() {
-      tracks.add(Track(title: "Track ${tracks.length + 1}"));
+      int trackNumber = tracks.length + 1;
+      String formattedTrackNumber = trackNumber.toString().padLeft(2, '0');
+      tracks.add(Track(title: "Track $formattedTrackNumber", trackNumber: formattedTrackNumber));
     });
   }
 }
