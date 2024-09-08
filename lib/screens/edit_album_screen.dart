@@ -106,6 +106,13 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
                   );
                 }).toList(),
               ),
+              // Add the "Add Track" button like in AddAlbumScreen
+              ElevatedButton(
+                onPressed: () {
+                  _addTrack();
+                },
+                child: const Text("Add Track"),
+              ),
               Expanded(
                 child: ListView.builder(
                   itemCount: widget.album.tracks.length,
@@ -162,5 +169,14 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
         ),
       ),
     );
+  }
+
+  // Function to add a track
+  void _addTrack() {
+    setState(() {
+      int trackNumber = widget.album.tracks.length + 1;
+      String formattedTrackNumber = trackNumber.toString().padLeft(2, '0');
+      widget.album.tracks.add(Track(title: "Track $formattedTrackNumber", trackNumber: formattedTrackNumber));
+    });
   }
 }
