@@ -2,37 +2,34 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/services/config_manager.dart';
-import 'dart:developer' as developer;
 
 class JsonService {
   final ConfigManager configManager;
 
   JsonService(this.configManager);
 
+  Future<String> _getJsonFilePath() async {
+    return await configManager.getJsonFilePathAsync();
+  }
+
   // Lädt Alben aus einer JSON-Datei
   Future<List<Album>> loadAlbums() async {
-    String? jsonPath = configManager.getJsonPath();
-    if (jsonPath == null || jsonPath.isEmpty) {
-      throw Exception('No JSON path set');
-    }
+    String jsonPath = await _getJsonFilePath();
 
     File file = File(jsonPath);
     if (!await file.exists()) {
-      throw Exception('JSON file not found');
+      // Erstelle eine leere Datei, wenn sie nicht existiert
+      await file.writeAsString('[]');
     }
 
     String contents = await file.readAsString();
-    developer.log('Message to log');
     List<dynamic> jsonData = json.decode(contents);
     return jsonData.map((item) => Album.fromMap(item as Map<String, dynamic>)).toList();
   }
 
   // Speichert Alben in der JSON-Datei mit Formatierung
   Future<void> saveAlbums(List<Album> albums) async {
-    String? jsonPath = configManager.getJsonPath();
-    if (jsonPath == null || jsonPath.isEmpty) {
-      throw Exception('No JSON path set');
-    }
+    String jsonPath = await _getJsonFilePath();
 
     File file = File(jsonPath);
     String jsonString = const JsonEncoder.withIndent('  ').convert(albums.map((album) => album.toMap()).toList());
@@ -47,7 +44,7 @@ class JsonService {
     await file.writeAsString(jsonString);
   }
 
-  // Exportiert Alben als XML (dieses Beispiel ist einfach und nicht für komplexe XML-Strukturen geeignet)
+  // Exportiert Alben als XML
   Future<void> exportXml(String exportPath) async {
     List<Album> albums = await loadAlbums();
     StringBuffer xmlString = StringBuffer();
@@ -85,7 +82,8 @@ class JsonService {
 
     for (Album album in albums) {
       for (Track track in album.tracks) {
-        csvString.writeln('${album.id},${album.name},${album.artist},${album.genre},${album.year},${album.medium},${album.digital},${track.trackNumber},${track.title}');
+        csvString.writeln(
+            '${album.id},${album.name},${album.artist},${album.genre},${album.year},${album.medium},${album.digital},${track.trackNumber},${track.title}');
       }
     }
 
@@ -105,7 +103,7 @@ class JsonService {
 
     List<Album> importedAlbums = jsonData.map((item) {
       Map<String, dynamic> albumData = item as Map<String, dynamic>;
-      albumData['id'] = DateTime.now().millisecondsSinceEpoch.toString();  // Neue eindeutige ID
+      albumData['id'] = DateTime.now().millisecondsSinceEpoch.toString(); // Neue eindeutige ID
       return Album.fromMap(albumData);
     }).toList();
 

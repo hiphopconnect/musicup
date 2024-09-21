@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 import '../services/json_service.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
 
 class SettingsScreen extends StatefulWidget {
   final JsonService jsonService;
@@ -12,69 +15,100 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class SettingsScreenState extends State<SettingsScreen> {
+  TextEditingController jsonFileNameController = TextEditingController();
   TextEditingController jsonPathController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    jsonPathController.text = widget.jsonService.configManager.getJsonPath() ?? '';
+    jsonFileNameController.text = widget.jsonService.configManager.getJsonFileName();
+    jsonPathController.text = widget.jsonService.configManager.getJsonFilePath() ?? '';
   }
 
-  Future<void> _pickFile() async {
+  Future<void> _pickJsonFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['json'],  // Hier kannst du die erlaubten Dateitypen festlegen
+      allowedExtensions: ['json'],
     );
 
-    if (result != null && result.files.single.path != null) {
-      String? selectedPath = result.files.single.path;
-      if (selectedPath != null) {
+    if (result != null && result.files.isNotEmpty) {
+      String? selectedFile = result.files.single.path;
+      if (selectedFile != null) {
         setState(() {
-          jsonPathController.text = selectedPath;
+          jsonPathController.text = selectedFile;
         });
-        await widget.jsonService.configManager.setJsonPath(selectedPath);
+        await widget.jsonService.configManager.setJsonFilePath(selectedFile);
         await widget.jsonService.configManager.saveConfig();
 
-        // Check if the widget is still mounted before accessing the context
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('JSON path saved!')),
+          const SnackBar(content: Text('JSON-Datei gespeichert!')),
         );
 
-        Navigator.pop(context, true);  // Zurück zum MainScreen, um die Alben neu zu laden
+        Navigator.pop(context, true);
       }
     }
   }
 
-  Future<void> _exportFile(String fileType) async {
-    String? filePath = await FilePicker.platform.saveFile(
-      dialogTitle: 'Export $fileType File',
-      fileName: 'albums_export.$fileType',
+  Future<void> _saveSettings() async {
+    String fileName = jsonFileNameController.text;
+    await widget.jsonService.configManager.setJsonFileName(fileName);
+    await widget.jsonService.configManager.saveConfig();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Einstellungen gespeichert!')),
     );
 
-    if (filePath != null) {
+    Navigator.pop(context, true);
+  }
+
+  Future<void> _exportFile(String fileType) async {
+    if (Platform.isIOS || Platform.isAndroid) {
+      // Auf mobilen Plattformen teilen wir die Datei
+      String tempDir = (await getTemporaryDirectory()).path;
+      String exportPath = '$tempDir/albums_export.$fileType';
+
       if (fileType == 'json') {
-        await widget.jsonService.exportJson(filePath);
+        await widget.jsonService.exportJson(exportPath);
       } else if (fileType == 'xml') {
-        await widget.jsonService.exportXml(filePath);
+        await widget.jsonService.exportXml(exportPath);
       } else if (fileType == 'csv') {
-        await widget.jsonService.exportCsv(filePath);
+        await widget.jsonService.exportCsv(exportPath);
       }
 
-      // Check if the widget is still mounted before accessing the context
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$fileType file exported: $filePath')),
+      await Share.shareXFiles([XFile(exportPath)], text: 'Hier ist meine Albumliste');
+    } else {
+      // Auf Desktop-Plattformen verwenden wir den Dateipicker
+      String? filePath = await FilePicker.platform.saveFile(
+        dialogTitle: 'Export $fileType File',
+        fileName: 'albums_export.$fileType',
       );
+
+      if (filePath != null) {
+        if (fileType == 'json') {
+          await widget.jsonService.exportJson(filePath);
+        } else if (fileType == 'xml') {
+          await widget.jsonService.exportXml(filePath);
+        } else if (fileType == 'csv') {
+          await widget.jsonService.exportCsv(filePath);
+        }
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$fileType-Datei exportiert: $filePath')),
+        );
+      }
     }
   }
 
   Future<void> _importFile(String fileType) async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: [fileType],
+      allowedExtensions: ['json'],
     );
 
     if (result != null && result.files.isNotEmpty) {
@@ -83,17 +117,16 @@ class SettingsScreenState extends State<SettingsScreen> {
         try {
           await widget.jsonService.importAlbums(selectedPath);
 
-          // Check if the widget is still mounted before accessing the context
           if (!mounted) return;
 
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$fileType file imported: $selectedPath')),
+            SnackBar(content: Text('$fileType-Datei importiert: $selectedPath')),
           );
         } catch (e) {
           if (!mounted) return;
 
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to import: $e')),
+            SnackBar(content: Text('Import fehlgeschlagen: $e')),
           );
         }
       }
@@ -102,28 +135,46 @@ class SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    String platformInfo = Platform.isIOS || Platform.isAndroid
+        ? 'Auf mobilen Geräten wird die Datei im Anwendungsverzeichnis gespeichert.'
+        : 'Auf Desktop-Geräten können Sie den Pfad auswählen.';
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: const Text('Einstellungen'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: jsonPathController,
-                    decoration: const InputDecoration(labelText: 'JSON File Path'),
+            Text(platformInfo),
+            const SizedBox(height: 16),
+            TextField(
+              controller: jsonFileNameController,
+              decoration: const InputDecoration(labelText: 'JSON-Dateiname'),
+            ),
+            if (!Platform.isIOS && !Platform.isAndroid) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: jsonPathController,
+                      decoration: const InputDecoration(labelText: 'JSON-Dateipfad'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                ElevatedButton(
-                  onPressed: _pickFile,
-                  child: const Text('Select File'),
-                ),
-              ],
+                  const SizedBox(width: 16),
+                  ElevatedButton(
+                    onPressed: _pickJsonFile,
+                    child: const Text('JSON-Datei wählen'),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _saveSettings,
+              child: const Text('Speichern'),
             ),
             const SizedBox(height: 16),
             Row(
@@ -131,35 +182,22 @@ class SettingsScreenState extends State<SettingsScreen> {
               children: [
                 ElevatedButton(
                   onPressed: () => _exportFile('json'),
-                  child: const Text('Export as JSON'),
+                  child: const Text('Export als JSON'),
                 ),
                 ElevatedButton(
                   onPressed: () => _exportFile('xml'),
-                  child: const Text('Export as XML'),
+                  child: const Text('Export als XML'),
                 ),
                 ElevatedButton(
                   onPressed: () => _exportFile('csv'),
-                  child: const Text('Export as CSV'),
+                  child: const Text('Export als CSV'),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: () => _importFile('json'),
-                  child: const Text('Import JSON'),
-                ),
-                ElevatedButton(
-                  onPressed: () => _importFile('xml'),
-                  child: const Text('Import XML'),
-                ),
-                ElevatedButton(
-                  onPressed: () => _importFile('csv'),
-                  child: const Text('Import CSV'),
-                ),
-              ],
+            ElevatedButton(
+              onPressed: () => _importFile('json'),
+              child: const Text('Import JSON'),
             ),
           ],
         ),

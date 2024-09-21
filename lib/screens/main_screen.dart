@@ -20,8 +20,27 @@ class MainScreenState extends State<MainScreen> {
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
 
-  // New variable for search category
-  String _searchCategory = 'Album';  // Default search category is Album
+  // Zustandsvariablen für die Medienanzahl
+  int vinylCount = 0;
+  int cdCount = 0;
+  int cassetteCount = 0;
+  int digitalCount = 0;
+  int digitalYesCount = 0;
+  int digitalNoCount = 0;
+
+  // Variable für die Suchkategorie
+  String _searchCategory = 'Album';  // Standardmäßig wird nach Album gesucht
+
+  // Filtervariablen für Medium
+  final Map<String, bool> _mediumFilters = {
+    'Vinyl': true,
+    'CD': true,
+    'Cassette': true,
+    'Digital': true,
+  };
+
+  // Filtervariable für Digital-Status
+  String _digitalFilter = 'Alle'; // Optionen: 'Alle', 'Ja', 'Nein'
 
   @override
   void initState() {
@@ -43,8 +62,10 @@ class MainScreenState extends State<MainScreen> {
       if (!mounted) return;
       setState(() {
         _albums = albums;
-        _filteredAlbums = albums;
+        _sortAlbums();  // Albenliste sortieren
+        _filteredAlbums = _albums;
         _isLoading = false;
+        _updateCounts();  // Zähler aktualisieren
       });
     } catch (e) {
       if (!mounted) return;
@@ -52,8 +73,58 @@ class MainScreenState extends State<MainScreen> {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading albums: $e')),
+        SnackBar(content: Text('Fehler beim Laden der Alben: $e')),
       );
+    }
+  }
+
+  // Methode zum Sortieren der Albenliste
+  void _sortAlbums() {
+    _albums.sort((a, b) => a.artist.toLowerCase().compareTo(b.artist.toLowerCase()));
+  }
+
+  // Methode zum Sortieren der gefilterten Albenliste
+  void _sortFilteredAlbums() {
+    _filteredAlbums.sort((a, b) => a.artist.toLowerCase().compareTo(b.artist.toLowerCase()));
+  }
+
+  void _updateCounts() {
+    // Wenn du die Zähler basierend auf den gefilterten Alben anzeigen möchtest, verwende _filteredAlbums
+    // List<Album> albumsToCount = _filteredAlbums;
+    // Wenn du die Zähler basierend auf allen Alben anzeigen möchtest, verwende _albums
+    List<Album> albumsToCount = _albums;
+
+    vinylCount = 0;
+    cdCount = 0;
+    cassetteCount = 0;
+    digitalCount = 0;
+    digitalYesCount = 0;
+    digitalNoCount = 0;
+
+    for (final album in albumsToCount) {
+      switch (album.medium.toLowerCase()) {
+        case 'vinyl':
+          vinylCount++;
+          break;
+        case 'cd':
+          cdCount++;
+          break;
+        case 'cassette':
+          cassetteCount++;
+          break;
+        case 'digital':
+          digitalCount++;
+          break;
+        default:
+        // Unbekannte Medien ignorieren oder behandeln
+          break;
+      }
+
+      if (album.digital) {
+        digitalYesCount++;
+      } else {
+        digitalNoCount++;
+      }
     }
   }
 
@@ -62,27 +133,44 @@ class MainScreenState extends State<MainScreen> {
 
     setState(() {
       _filteredAlbums = _albums.where((album) {
+        // Überprüfe Medium-Filter
+        if (!_mediumFilters[album.medium]!) {
+          return false;
+        }
+
+        // Überprüfe Digital-Status-Filter
+        if (_digitalFilter != 'Alle') {
+          if (_digitalFilter == 'Ja' && !album.digital) {
+            return false;
+          } else if (_digitalFilter == 'Nein' && album.digital) {
+            return false;
+          }
+        }
+
+        // Suche basierend auf der Suchkategorie
         switch (_searchCategory) {
           case 'Artist':
-          // Search only by artist name
             return album.artist.toLowerCase().contains(query);
           case 'Song':
-          // Search only by song titles
             return album.tracks.any((track) => track.title.toLowerCase().contains(query));
           case 'Album':
           default:
-          // Default case: Search by album name
             return album.name.toLowerCase().contains(query);
         }
       }).toList();
+
+      _sortFilteredAlbums();  // Gefilterte Liste sortieren
+      _updateCounts();  // Zähler aktualisieren basierend auf gefilterten Alben
     });
   }
 
-  // Define the missing _deleteAlbum method
+  // Methode zum Löschen eines Albums
   void _deleteAlbum(Album album) async {
     setState(() {
-      _albums.remove(album);
-      _filteredAlbums.remove(album);
+      _albums.removeWhere((a) => a.id == album.id);
+      _sortAlbums();  // Albenliste sortieren
+      _filterAlbums();  // Filter erneut anwenden
+      _updateCounts();  // Zähler aktualisieren
     });
     await widget.jsonService.saveAlbums(_albums);
   }
@@ -103,7 +191,9 @@ class MainScreenState extends State<MainScreen> {
               if (newAlbum != null && newAlbum is Album) {
                 setState(() {
                   _albums.add(newAlbum);
-                  _filteredAlbums.add(newAlbum);
+                  _sortAlbums();  // Albenliste sortieren
+                  _filterAlbums();  // Filter erneut anwenden
+                  _updateCounts();  // Zähler aktualisieren
                 });
                 widget.jsonService.saveAlbums(_albums);
               }
@@ -128,11 +218,75 @@ class MainScreenState extends State<MainScreen> {
       ),
       body: Column(
         children: [
+          // Anzeige der Anzahl der Medien und Digitalstatus
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              children: [
+                Text(
+                  'Vinyl: $vinylCount  CD: $cdCount  Cassette: $cassetteCount  Digital: $digitalCount',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12.0),
+                ),
+                Text(
+                  'Digital Ja: $digitalYesCount  Digital Nein: $digitalNoCount',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12.0),
+                ),
+              ],
+            ),
+          ),
+          // Filterbereich
+          ExpansionTile(
+            title: const Text('Filter'),
+            children: [
+              // Medium-Filter
+              Wrap(
+                spacing: 10.0,
+                children: _mediumFilters.keys.map((String key) {
+                  return FilterChip(
+                    label: Text(key),
+                    selected: _mediumFilters[key]!,
+                    onSelected: (bool value) {
+                      setState(() {
+                        _mediumFilters[key] = value;
+                        _filterAlbums();
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 10),
+              // Digital-Status-Filter
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Digital:'),
+                  const SizedBox(width: 10),
+                  DropdownButton<String>(
+                    value: _digitalFilter,
+                    items: const [
+                      DropdownMenuItem(value: 'Alle', child: Text('Alle')),
+                      DropdownMenuItem(value: 'Ja', child: Text('Ja')),
+                      DropdownMenuItem(value: 'Nein', child: Text('Nein')),
+                    ],
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _digitalFilter = newValue!;
+                        _filterAlbums();
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // Suchbereich
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
-                // Dropdown for search category
+                // Dropdown für die Suchkategorie
                 DropdownButton<String>(
                   value: _searchCategory,
                   items: const [
@@ -143,17 +297,17 @@ class MainScreenState extends State<MainScreen> {
                   onChanged: (String? newValue) {
                     setState(() {
                       _searchCategory = newValue!;
-                      _filterAlbums(); // Apply filter after changing category
+                      _filterAlbums(); // Filter nach Änderung der Kategorie anwenden
                     });
                   },
                 ),
-                const SizedBox(width: 10),  // Add some space between dropdown and search field
-                // Search field
+                const SizedBox(width: 10),  // Abstand zwischen Dropdown und Suchfeld
+                // Suchfeld
                 Expanded(
                   child: TextField(
                     controller: _searchController,
                     decoration: const InputDecoration(
-                      hintText: "Search...",
+                      hintText: "Suche...",
                       prefixIcon: Icon(Icons.search),
                       border: OutlineInputBorder(),
                     ),
@@ -166,7 +320,7 @@ class MainScreenState extends State<MainScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _filteredAlbums.isEmpty
-                ? const Center(child: Text('No albums found'))
+                ? const Center(child: Text('Keine Alben gefunden'))
                 : ListView.builder(
               itemCount: _filteredAlbums.length,
               itemBuilder: (context, index) {
@@ -190,8 +344,13 @@ class MainScreenState extends State<MainScreen> {
                           );
                           if (editedAlbum != null && editedAlbum is Album) {
                             setState(() {
-                              _albums[index] = editedAlbum;
-                              _filteredAlbums[index] = editedAlbum;
+                              int originalIndex = _albums.indexWhere((alb) => alb.id == editedAlbum.id);
+                              if (originalIndex != -1) {
+                                _albums[originalIndex] = editedAlbum;
+                                _sortAlbums();  // Albenliste sortieren
+                              }
+                              _filterAlbums();  // Filter erneut anwenden
+                              _updateCounts();  // Zähler aktualisieren
                             });
                             await widget.jsonService.saveAlbums(_albums);
                           }
@@ -226,7 +385,7 @@ class MainScreenState extends State<MainScreen> {
                           ),
                           actions: [
                             TextButton(
-                              child: const Text("Close"),
+                              child: const Text("Schließen"),
                               onPressed: () {
                                 Navigator.of(context).pop();
                               },

@@ -82,8 +82,7 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
                     selectedMedium = newValue;
                   });
                 },
-                items: <String>['Vinyl', 'CD', 'Cassette', 'Digital', 'Unknown']
-                    .toSet()  // Ensure unique values
+                items: <String>{'Vinyl', 'CD', 'Cassette', 'Digital', 'Unknown'}  // Ensure unique values
                     .map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
