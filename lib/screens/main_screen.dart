@@ -1,9 +1,11 @@
+// lib/screens/main_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/services/json_service.dart';
 import 'package:music_up/screens/add_album_screen.dart';
 import 'package:music_up/screens/edit_album_screen.dart';
-import 'package:music_up/screens/settings_screen.dart';  // Importiere die SettingsScreen
+import 'package:music_up/screens/settings_screen.dart'; // Importiere die SettingsScreen
 
 class MainScreen extends StatefulWidget {
   final JsonService jsonService;
@@ -29,7 +31,7 @@ class MainScreenState extends State<MainScreen> {
   int digitalNoCount = 0;
 
   // Variable für die Suchkategorie
-  String _searchCategory = 'Album';  // Standardmäßig wird nach Album gesucht
+  String _searchCategory = 'Album'; // Standardmäßig wird nach Album gesucht
 
   // Filtervariablen für Medium
   final Map<String, bool> _mediumFilters = {
@@ -40,7 +42,10 @@ class MainScreenState extends State<MainScreen> {
   };
 
   // Filtervariable für Digital-Status
-  String _digitalFilter = 'Alle'; // Optionen: 'Alle', 'Ja', 'Nein'
+  String _digitalFilter = 'All'; // Optionen: 'Alle', 'Ja', 'Nein'
+
+  // Variable für Sortierreihenfolge
+  bool _isAscending = true; // true = A-Z, false = Z-A
 
   @override
   void initState() {
@@ -62,10 +67,10 @@ class MainScreenState extends State<MainScreen> {
       if (!mounted) return;
       setState(() {
         _albums = albums;
-        _sortAlbums();  // Albenliste sortieren
+        _sortAlbums(); // Albenliste sortieren
         _filteredAlbums = _albums;
         _isLoading = false;
-        _updateCounts();  // Zähler aktualisieren
+        _updateCounts(); // Zähler aktualisieren
       });
     } catch (e) {
       if (!mounted) return;
@@ -73,19 +78,25 @@ class MainScreenState extends State<MainScreen> {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Fehler beim Laden der Alben: $e')),
+        SnackBar(content: Text('Error when loading the albums: $e')),
       );
     }
   }
 
   // Methode zum Sortieren der Albenliste
   void _sortAlbums() {
-    _albums.sort((a, b) => a.artist.toLowerCase().compareTo(b.artist.toLowerCase()));
+    _albums.sort((a, b) {
+      int comparison = a.artist.toLowerCase().compareTo(b.artist.toLowerCase());
+      return _isAscending ? comparison : -comparison;
+    });
   }
 
   // Methode zum Sortieren der gefilterten Albenliste
   void _sortFilteredAlbums() {
-    _filteredAlbums.sort((a, b) => a.artist.toLowerCase().compareTo(b.artist.toLowerCase()));
+    _filteredAlbums.sort((a, b) {
+      int comparison = a.artist.toLowerCase().compareTo(b.artist.toLowerCase());
+      return _isAscending ? comparison : -comparison;
+    });
   }
 
   void _updateCounts() {
@@ -139,10 +150,10 @@ class MainScreenState extends State<MainScreen> {
         }
 
         // Überprüfe Digital-Status-Filter
-        if (_digitalFilter != 'Alle') {
-          if (_digitalFilter == 'Ja' && !album.digital) {
+        if (_digitalFilter != 'All') {
+          if (_digitalFilter == 'Yes' && !album.digital) {
             return false;
-          } else if (_digitalFilter == 'Nein' && album.digital) {
+          } else if (_digitalFilter == 'No' && album.digital) {
             return false;
           }
         }
@@ -159,8 +170,8 @@ class MainScreenState extends State<MainScreen> {
         }
       }).toList();
 
-      _sortFilteredAlbums();  // Gefilterte Liste sortieren
-      _updateCounts();  // Zähler aktualisieren basierend auf gefilterten Alben
+      _sortFilteredAlbums(); // Gefilterte Liste sortieren
+      _updateCounts(); // Zähler aktualisieren basierend auf gefilterten Alben
     });
   }
 
@@ -168,11 +179,46 @@ class MainScreenState extends State<MainScreen> {
   void _deleteAlbum(Album album) async {
     setState(() {
       _albums.removeWhere((a) => a.id == album.id);
-      _sortAlbums();  // Albenliste sortieren
-      _filterAlbums();  // Filter erneut anwenden
-      _updateCounts();  // Zähler aktualisieren
+      _sortAlbums(); // Albenliste sortieren
+      _filterAlbums(); // Filter erneut anwenden
+      _updateCounts(); // Zähler aktualisieren
     });
     await widget.jsonService.saveAlbums(_albums);
+  }
+
+  // Methode zum Umschalten der Sortierreihenfolge
+  void _toggleSortOrder() {
+    setState(() {
+      _isAscending = !_isAscending;
+      _sortAlbums();
+      _sortFilteredAlbums();
+    });
+
+    // Zeige eine Snackbar mit der aktuellen Sortierreihenfolge
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_isAscending ? 'Sort A-Z' : 'Sort Z-A'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // Methode zum Zurücksetzen der Medium-Filter
+  void _resetMediumFilters() {
+    setState(() {
+      // Setze alle Medium-Filter auf true
+      _mediumFilters.updateAll((key, value) => true);
+      // Wende die Filter an
+      _filterAlbums();
+    });
+
+    // Zeige eine Snackbar, die das Zurücksetzen der Medium-Filter bestätigt
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Medium filter was reset'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -191,14 +237,20 @@ class MainScreenState extends State<MainScreen> {
               if (newAlbum != null && newAlbum is Album) {
                 setState(() {
                   _albums.add(newAlbum);
-                  _sortAlbums();  // Albenliste sortieren
-                  _filterAlbums();  // Filter erneut anwenden
-                  _updateCounts();  // Zähler aktualisieren
+                  _sortAlbums(); // Albenliste sortieren
+                  _filterAlbums(); // Filter erneut anwenden
+                  _updateCounts(); // Zähler aktualisieren
                 });
                 widget.jsonService.saveAlbums(_albums);
               }
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.sort_by_alpha),
+            tooltip: _isAscending ? 'Sort Z-A' : 'Sort A-Z',
+            onPressed: _toggleSortOrder,
+          ),
+          // Entferne die Reset-Schaltfläche aus der AppBar
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
@@ -209,7 +261,7 @@ class MainScreenState extends State<MainScreen> {
                 ),
               ).then((value) {
                 if (value == true) {
-                  _loadAlbums();  // Alben nach dem Ändern der Einstellungen neu laden
+                  _loadAlbums(); // Alben nach dem Ändern der Einstellungen neu laden
                 }
               });
             },
@@ -229,7 +281,7 @@ class MainScreenState extends State<MainScreen> {
                   style: const TextStyle(fontSize: 12.0),
                 ),
                 Text(
-                  'Digital Ja: $digitalYesCount  Digital Nein: $digitalNoCount',
+                  'Digital Yes: $digitalYesCount  Digital No: $digitalNoCount',
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 12.0),
                 ),
@@ -240,44 +292,63 @@ class MainScreenState extends State<MainScreen> {
           ExpansionTile(
             title: const Text('Filter'),
             children: [
-              // Medium-Filter
-              Wrap(
-                spacing: 10.0,
-                children: _mediumFilters.keys.map((String key) {
-                  return FilterChip(
-                    label: Text(key),
-                    selected: _mediumFilters[key]!,
-                    onSelected: (bool value) {
-                      setState(() {
-                        _mediumFilters[key] = value;
-                        _filterAlbums();
-                      });
-                    },
-                  );
-                }).toList(),
+              // Medium-Filter und Reset-Schaltfläche in einer Zeile
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  children: [
+                    // Expanded Wrap mit den FilterChips
+                    Expanded(
+                      child: Wrap(
+                        spacing: 10.0,
+                        children: _mediumFilters.keys.map((String key) {
+                          return FilterChip(
+                            label: Text(key),
+                            selected: _mediumFilters[key]!,
+                            onSelected: (bool value) {
+                              setState(() {
+                                _mediumFilters[key] = value;
+                                _filterAlbums();
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    // Reset-Schaltfläche
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      tooltip: 'Medium filter reset',
+                      onPressed: _resetMediumFilters,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 10),
               // Digital-Status-Filter
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Digital:'),
-                  const SizedBox(width: 10),
-                  DropdownButton<String>(
-                    value: _digitalFilter,
-                    items: const [
-                      DropdownMenuItem(value: 'Alle', child: Text('Alle')),
-                      DropdownMenuItem(value: 'Ja', child: Text('Ja')),
-                      DropdownMenuItem(value: 'Nein', child: Text('Nein')),
-                    ],
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        _digitalFilter = newValue!;
-                        _filterAlbums();
-                      });
-                    },
-                  ),
-                ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('Digital:'),
+                    const SizedBox(width: 10),
+                    DropdownButton<String>(
+                      value: _digitalFilter,
+                      items: const [
+                        DropdownMenuItem(value: 'All', child: Text('All')),
+                        DropdownMenuItem(value: 'Yes', child: Text('Yes')),
+                        DropdownMenuItem(value: 'No', child: Text('No')),
+                      ],
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _digitalFilter = newValue!;
+                          _filterAlbums();
+                        });
+                      },
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -301,13 +372,13 @@ class MainScreenState extends State<MainScreen> {
                     });
                   },
                 ),
-                const SizedBox(width: 10),  // Abstand zwischen Dropdown und Suchfeld
+                const SizedBox(width: 10), // Abstand zwischen Dropdown und Suchfeld
                 // Suchfeld
                 Expanded(
                   child: TextField(
                     controller: _searchController,
                     decoration: const InputDecoration(
-                      hintText: "Suche...",
+                      hintText: "Search...",
                       prefixIcon: Icon(Icons.search),
                       border: OutlineInputBorder(),
                     ),
@@ -320,7 +391,7 @@ class MainScreenState extends State<MainScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _filteredAlbums.isEmpty
-                ? const Center(child: Text('Keine Alben gefunden'))
+                ? const Center(child: Text('No albums found'))
                 : ListView.builder(
               itemCount: _filteredAlbums.length,
               itemBuilder: (context, index) {
@@ -347,10 +418,10 @@ class MainScreenState extends State<MainScreen> {
                               int originalIndex = _albums.indexWhere((alb) => alb.id == editedAlbum.id);
                               if (originalIndex != -1) {
                                 _albums[originalIndex] = editedAlbum;
-                                _sortAlbums();  // Albenliste sortieren
+                                _sortAlbums(); // Albenliste sortieren
                               }
-                              _filterAlbums();  // Filter erneut anwenden
-                              _updateCounts();  // Zähler aktualisieren
+                              _filterAlbums(); // Filter erneut anwenden
+                              _updateCounts(); // Zähler aktualisieren
                             });
                             await widget.jsonService.saveAlbums(_albums);
                           }
@@ -377,7 +448,7 @@ class MainScreenState extends State<MainScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: sortedTracks.map((track) {
                                 return ListTile(
-                                  leading: Text("Track ${track.trackNumber.padLeft(2, '0')}"),
+                                  leading: Text("Track ${track.getFormattedTrackNumber()}"),
                                   title: Text(track.title),
                                 );
                               }).toList(),
@@ -385,7 +456,7 @@ class MainScreenState extends State<MainScreen> {
                           ),
                           actions: [
                             TextButton(
-                              child: const Text("Schließen"),
+                              child: const Text("Close"),
                               onPressed: () {
                                 Navigator.of(context).pop();
                               },

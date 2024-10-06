@@ -1,3 +1,5 @@
+// lib/screens/add_album_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:uuid/uuid.dart';
@@ -20,6 +22,14 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
   final currentYear = DateTime.now().year;
 
   @override
+  void dispose() {
+    nameController.dispose();
+    artistController.dispose();
+    genreController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -30,18 +40,22 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
         child: Form(
           child: Column(
             children: [
+              // Album Titel
               TextFormField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: "Name"),
+                decoration: const InputDecoration(labelText: "Album title"),
               ),
+              // Artist
               TextFormField(
                 controller: artistController,
                 decoration: const InputDecoration(labelText: "Artist"),
               ),
+              // Genre
               TextFormField(
                 controller: genreController,
                 decoration: const InputDecoration(labelText: "Genre"),
               ),
+              // Year Dropdown
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: "Year"),
                 value: selectedYear,
@@ -60,6 +74,7 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
                   );
                 }).toList(),
               ),
+              // Medium Dropdown
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: "Medium"),
                 value: selectedMedium,
@@ -76,6 +91,7 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
                   );
                 }).toList(),
               ),
+              // Digital Dropdown
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: "Digital"),
                 value: isDigital != null ? (isDigital! ? "Yes" : "No") : null,
@@ -91,46 +107,61 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
                   );
                 }).toList(),
               ),
-              ElevatedButton(
-                onPressed: () {
-                  _addTrack();
-                },
-                child: const Text("Add Track"),
-              ),
+              // Expanded ListView für Tracks und "Add Track"-Button
               Expanded(
                 child: ListView.builder(
-                  itemCount: tracks.length,
+                  itemCount: tracks.length + 1, // +1 für den "Add Track"-Button
                   itemBuilder: (context, index) {
-                    return ListTile(
-                      leading: Text('Track ${tracks[index].trackNumber}'),
-                      title: TextFormField(
-                        initialValue: tracks[index].title,
-                        onChanged: (value) {
-                          setState(() {
-                            tracks[index].title = value;
-                          });
-                        },
-                        decoration: const InputDecoration(
-                          labelText: 'Track Title',
+                    if (index < tracks.length) {
+                      // Track-Item
+                      return ListTile(
+                        leading: Text('Track ${tracks[index].trackNumber}'),
+                        title: TextFormField(
+                          initialValue: tracks[index].title,
+                          onChanged: (value) {
+                            setState(() {
+                              tracks[index].title = value;
+                            });
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'Track Title',
+                          ),
                         ),
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () {
-                          setState(() {
-                            tracks.removeAt(index);
-                          });
-                        },
-                      ),
-                    );
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete),
+                          onPressed: () {
+                            setState(() {
+                              tracks.removeAt(index);
+                              // Aktualisiere die Track-Nummern nach dem Entfernen
+                              for (int i = 0; i < tracks.length; i++) {
+                                tracks[i].trackNumber = (i + 1).toString().padLeft(2, '0');
+                                tracks[i].title = 'Track ${tracks[i].trackNumber}';
+                              }
+                            });
+                          },
+                        ),
+                      );
+                    } else {
+                      // "Add Track"-Button
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: ElevatedButton.icon(
+                          onPressed: _addTrack,
+                          icon: const Icon(Icons.add),
+                          label: const Text("Add Track"),
+                        ),
+                      );
+                    }
                   },
                 ),
               ),
+              // Save Album Button
               ElevatedButton(
                 onPressed: () {
                   if (selectedMedium == null || isDigital == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Please select all fields")));
+                      const SnackBar(content: Text("Please select all fields")),
+                    );
                   } else {
                     var uuid = const Uuid();
                     Album newAlbum = Album(
@@ -138,7 +169,7 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
                       name: nameController.text,
                       artist: artistController.text,
                       genre: genreController.text,
-                      year: selectedYear!,
+                      year: selectedYear ?? 'Unknown',
                       medium: selectedMedium!,
                       digital: isDigital!,
                       tracks: tracks,

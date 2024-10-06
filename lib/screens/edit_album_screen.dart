@@ -49,7 +49,7 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
             children: [
               TextFormField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: "Name"),
+                decoration: const InputDecoration(labelText: "Album Name"),
               ),
               TextFormField(
                 controller: artistController,

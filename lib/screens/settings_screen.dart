@@ -43,7 +43,7 @@ class SettingsScreenState extends State<SettingsScreen> {
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('JSON-Datei gespeichert!')),
+          const SnackBar(content: Text('JSON-File saved!')),
         );
 
         Navigator.pop(context, true);
@@ -59,7 +59,7 @@ class SettingsScreenState extends State<SettingsScreen> {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Einstellungen gespeichert!')),
+      const SnackBar(content: Text('Settings saved!')),
     );
 
     Navigator.pop(context, true);
@@ -79,7 +79,7 @@ class SettingsScreenState extends State<SettingsScreen> {
         await widget.jsonService.exportCsv(exportPath);
       }
 
-      await Share.shareXFiles([XFile(exportPath)], text: 'Hier ist meine Albumliste');
+      await Share.shareXFiles([XFile(exportPath)], text: 'Here is my album list');
     } else {
       // Auf Desktop-Plattformen verwenden wir den Dateipicker
       String? filePath = await FilePicker.platform.saveFile(
@@ -99,7 +99,7 @@ class SettingsScreenState extends State<SettingsScreen> {
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$fileType-Datei exportiert: $filePath')),
+          SnackBar(content: Text('$fileType-File exported: $filePath')),
         );
       }
     }
@@ -120,13 +120,13 @@ class SettingsScreenState extends State<SettingsScreen> {
           if (!mounted) return;
 
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$fileType-Datei importiert: $selectedPath')),
+            SnackBar(content: Text('$fileType-File imported: $selectedPath')),
           );
         } catch (e) {
           if (!mounted) return;
 
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Import fehlgeschlagen: $e')),
+            SnackBar(content: Text('Import failed: $e')),
           );
         }
       }
@@ -136,12 +136,12 @@ class SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     String platformInfo = Platform.isIOS || Platform.isAndroid
-        ? 'Auf mobilen Geräten wird die Datei im Anwendungsverzeichnis gespeichert.'
-        : 'Auf Desktop-Geräten können Sie den Pfad auswählen.';
+        ? 'On mobile devices, the file is saved in the application directory.'
+        : 'You can select the path on desktop devices.';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Einstellungen'),
+        title: const Text('Settings'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -151,7 +151,7 @@ class SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: jsonFileNameController,
-              decoration: const InputDecoration(labelText: 'JSON-Dateiname'),
+              decoration: const InputDecoration(labelText: 'JSON-Filename'),
             ),
             if (!Platform.isIOS && !Platform.isAndroid) ...[
               const SizedBox(height: 16),
@@ -160,13 +160,13 @@ class SettingsScreenState extends State<SettingsScreen> {
                   Expanded(
                     child: TextField(
                       controller: jsonPathController,
-                      decoration: const InputDecoration(labelText: 'JSON-Dateipfad'),
+                      decoration: const InputDecoration(labelText: 'JSON-File path'),
                     ),
                   ),
                   const SizedBox(width: 16),
                   ElevatedButton(
                     onPressed: _pickJsonFile,
-                    child: const Text('JSON-Datei wählen'),
+                    child: const Text('JSON-File select'),
                   ),
                 ],
               ),
@@ -174,7 +174,7 @@ class SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _saveSettings,
-              child: const Text('Speichern'),
+              child: const Text('Save'),
             ),
             const SizedBox(height: 16),
             Row(
@@ -182,15 +182,15 @@ class SettingsScreenState extends State<SettingsScreen> {
               children: [
                 ElevatedButton(
                   onPressed: () => _exportFile('json'),
-                  child: const Text('Export als JSON'),
+                  child: const Text('Export as JSON'),
                 ),
                 ElevatedButton(
                   onPressed: () => _exportFile('xml'),
-                  child: const Text('Export als XML'),
+                  child: const Text('Export as XML'),
                 ),
                 ElevatedButton(
                   onPressed: () => _exportFile('csv'),
-                  child: const Text('Export als CSV'),
+                  child: const Text('Export as CSV'),
                 ),
               ],
             ),
