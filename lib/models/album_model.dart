@@ -23,7 +23,8 @@ class Album {
 
   factory Album.fromMap(Map<String, dynamic> json) {
     var tracksFromJson = json['tracks'] as List;
-    List<Track> tracksList = tracksFromJson.map((i) => Track.fromMap(i)).toList();
+    List<Track> tracksList =
+        tracksFromJson.map((i) => Track.fromMap(i)).toList();
 
     return Album(
       id: json['id'],

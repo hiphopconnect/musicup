@@ -21,7 +21,8 @@ class MyApp extends StatelessWidget {
   final JsonService jsonService;
   final ConfigManager configManager;
 
-  const MyApp({super.key, required this.jsonService, required this.configManager});
+  const MyApp(
+      {super.key, required this.jsonService, required this.configManager});
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +33,9 @@ class MyApp extends StatelessWidget {
       ),
       home: MainScreen(jsonService: jsonService), // Übergibt jsonService hier
       routes: {
-        '/settings': (context) => SettingsScreen(jsonService: jsonService), // Korrigiert die Übergabe von jsonService
+        '/settings': (context) => SettingsScreen(
+            jsonService:
+                jsonService), // Korrigiert die Übergabe von jsonService
       },
     );
   }

@@ -22,7 +22,7 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
   List<String> years = [];
   final ScrollController _scrollController = ScrollController();
 
-  // Kopie des Albums und der Tracks
+  // Copy of the album and tracks
   late Album editedAlbum;
   List<Track> tracks = [];
   List<TextEditingController> _trackTitleControllers = [];
@@ -31,7 +31,7 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
   void initState() {
     super.initState();
 
-    // Erstellen einer Kopie des Albums
+    // Create a copy of the album
     editedAlbum = Album(
       id: widget.album.id,
       name: widget.album.name,
@@ -40,10 +40,12 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
       year: widget.album.year,
       medium: widget.album.medium,
       digital: widget.album.digital,
-      tracks: widget.album.tracks.map((track) => Track(
-        title: track.title,
-        trackNumber: track.trackNumber,
-      )).toList(),
+      tracks: widget.album.tracks
+          .map((track) => Track(
+                title: track.title,
+                trackNumber: track.trackNumber,
+              ))
+          .toList(),
     );
 
     nameController = TextEditingController(text: editedAlbum.name);
@@ -88,41 +90,43 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
   }
 
   Future<bool> _onWillPop() async {
-    bool shouldPop = await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Änderungen speichern?'),
-        content: const Text('Möchten Sie die Änderungen speichern, bevor Sie die Seite verlassen?'),
-        actions: [
-          TextButton(
-            child: const Text('Abbrechen'),
-            onPressed: () => Navigator.of(context).pop(false),
+    bool shouldPop = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Save changes?'),
+            content: const Text(
+                'Do you want to save changes before leaving the page?'),
+            actions: [
+              TextButton(
+                child: const Text('Cancel'),
+                onPressed: () => Navigator.of(context).pop(false),
+              ),
+              TextButton(
+                child: const Text('No'),
+                onPressed: () {
+                  Navigator.of(context).pop(true);
+                  Navigator.pop(context, null); // No changes saved
+                },
+              ),
+              TextButton(
+                child: const Text('Yes'),
+                onPressed: () {
+                  Navigator.of(context).pop(true);
+                  _saveAlbum();
+                },
+              ),
+            ],
           ),
-          TextButton(
-            child: const Text('Nein'),
-            onPressed: () {
-              Navigator.of(context).pop(true);
-              Navigator.pop(context, null); // Keine Änderungen gespeichert
-            },
-          ),
-          TextButton(
-            child: const Text('Ja'),
-            onPressed: () {
-              Navigator.of(context).pop(true);
-              _saveAlbum();
-            },
-          ),
-        ],
-      ),
-    ) ??
+        ) ??
         false;
     return shouldPop;
   }
 
   void _saveAlbum() {
-    if (selectedMedium == null || isDigital == null) {
+    if (selectedMedium == null || isDigital == null || selectedYear == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please select all fields")));
+        const SnackBar(content: Text("Please select all fields")),
+      );
     } else {
       Album updatedAlbum = editedAlbum.copyWith(
         name: nameController.text,
@@ -139,6 +143,7 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Using WillPopScope instead of PopScope
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
@@ -185,8 +190,13 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
                       selectedMedium = newValue;
                     });
                   },
-                  items: <String>{'Vinyl', 'CD', 'Cassette', 'Digital', 'Unknown'}
-                      .map<DropdownMenuItem<String>>((String value) {
+                  items: <String>{
+                    'Vinyl',
+                    'CD',
+                    'Cassette',
+                    'Digital',
+                    'Unknown'
+                  }.map<DropdownMenuItem<String>>((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -201,7 +211,8 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
                       isDigital = newValue == "Yes" ? true : false;
                     });
                   },
-                  items: <String>['Yes', 'No'].map<DropdownMenuItem<String>>((String value) {
+                  items: <String>['Yes', 'No']
+                      .map<DropdownMenuItem<String>>((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -233,34 +244,42 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
                                 icon: const Icon(Icons.arrow_upward),
                                 onPressed: index > 0
                                     ? () {
-                                  setState(() {
-                                    final temp = tracks[index];
-                                    tracks[index] = tracks[index - 1];
-                                    tracks[index - 1] = temp;
-                                    // Tracknummern aktualisieren
-                                    for (int i = 0; i < tracks.length; i++) {
-                                      tracks[i].trackNumber = (i + 1).toString().padLeft(2, '0');
-                                    }
-                                    _updateTrackControllers();
-                                  });
-                                }
+                                        setState(() {
+                                          final temp = tracks[index];
+                                          tracks[index] = tracks[index - 1];
+                                          tracks[index - 1] = temp;
+                                          // Update track numbers
+                                          for (int i = 0;
+                                              i < tracks.length;
+                                              i++) {
+                                            tracks[i].trackNumber = (i + 1)
+                                                .toString()
+                                                .padLeft(2, '0');
+                                          }
+                                          _updateTrackControllers();
+                                        });
+                                      }
                                     : null,
                               ),
                               IconButton(
                                 icon: const Icon(Icons.arrow_downward),
                                 onPressed: index < tracks.length - 1
                                     ? () {
-                                  setState(() {
-                                    final temp = tracks[index];
-                                    tracks[index] = tracks[index + 1];
-                                    tracks[index + 1] = temp;
-                                    // Tracknummern aktualisieren
-                                    for (int i = 0; i < tracks.length; i++) {
-                                      tracks[i].trackNumber = (i + 1).toString().padLeft(2, '0');
-                                    }
-                                    _updateTrackControllers();
-                                  });
-                                }
+                                        setState(() {
+                                          final temp = tracks[index];
+                                          tracks[index] = tracks[index + 1];
+                                          tracks[index + 1] = temp;
+                                          // Update track numbers
+                                          for (int i = 0;
+                                              i < tracks.length;
+                                              i++) {
+                                            tracks[i].trackNumber = (i + 1)
+                                                .toString()
+                                                .padLeft(2, '0');
+                                          }
+                                          _updateTrackControllers();
+                                        });
+                                      }
                                     : null,
                               ),
                               IconButton(
@@ -268,9 +287,10 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
                                 onPressed: () {
                                   setState(() {
                                     tracks.removeAt(index);
-                                    // Tracknummern aktualisieren
+                                    // Update track numbers
                                     for (int i = 0; i < tracks.length; i++) {
-                                      tracks[i].trackNumber = (i + 1).toString().padLeft(2, '0');
+                                      tracks[i].trackNumber =
+                                          (i + 1).toString().padLeft(2, '0');
                                     }
                                     _updateTrackControllers();
                                   });
@@ -280,7 +300,7 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
                           ),
                         );
                       } else {
-                        // "Add Track"-Button
+                        // "Add Track" button
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8.0),
                           child: ElevatedButton.icon(
@@ -305,7 +325,7 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
     );
   }
 
-  // Funktion zum Hinzufügen eines Tracks
+  // Function to add a track
   void _addTrack() {
     setState(() {
       int trackNumber = tracks.length + 1;
@@ -314,7 +334,7 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
       _updateTrackControllers();
     });
 
-    // Scrollen Sie nach unten
+    // Scroll down to the new track
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,

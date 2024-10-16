@@ -23,8 +23,10 @@ class SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    jsonFileNameController.text = widget.jsonService.configManager.getJsonFileName();
-    jsonPathController.text = widget.jsonService.configManager.getJsonFilePath() ?? '';
+    jsonFileNameController.text =
+        widget.jsonService.configManager.getJsonFileName();
+    jsonPathController.text =
+        widget.jsonService.configManager.getJsonFilePath() ?? '';
   }
 
   Future<void> _pickJsonFile() async {
@@ -81,7 +83,8 @@ class SettingsScreenState extends State<SettingsScreen> {
         await widget.jsonService.exportCsv(exportPath);
       }
 
-      await Share.shareXFiles([XFile(exportPath)], text: 'Here is my album list');
+      await Share.shareXFiles([XFile(exportPath)],
+          text: 'Here is my album list');
     } else {
       // Auf Desktop-Plattformen verwenden wir den Dateipicker
       String? filePath = await FilePicker.platform.saveFile(
@@ -171,7 +174,8 @@ class SettingsScreenState extends State<SettingsScreen> {
                   Expanded(
                     child: TextField(
                       controller: jsonPathController,
-                      decoration: const InputDecoration(labelText: 'JSON-File path'),
+                      decoration:
+                          const InputDecoration(labelText: 'JSON-File path'),
                     ),
                   ),
                   const SizedBox(width: 16),

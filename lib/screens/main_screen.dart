@@ -127,7 +127,7 @@ class MainScreenState extends State<MainScreen> {
           digitalCount++;
           break;
         default:
-        // Unbekannte Medien ignorieren oder behandeln
+          // Unbekannte Medien ignorieren oder behandeln
           break;
       }
 
@@ -163,7 +163,8 @@ class MainScreenState extends State<MainScreen> {
           case 'Artist':
             return album.artist.toLowerCase().contains(query);
           case 'Song':
-            return album.tracks.any((track) => track.title.toLowerCase().contains(query));
+            return album.tracks
+                .any((track) => track.title.toLowerCase().contains(query));
           case 'Album':
           default:
             return album.name.toLowerCase().contains(query);
@@ -257,7 +258,8 @@ class MainScreenState extends State<MainScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => SettingsScreen(jsonService: widget.jsonService),
+                  builder: (context) =>
+                      SettingsScreen(jsonService: widget.jsonService),
                 ),
               ).then((value) {
                 if (value == true) {
@@ -372,7 +374,8 @@ class MainScreenState extends State<MainScreen> {
                     });
                   },
                 ),
-                const SizedBox(width: 10), // Abstand zwischen Dropdown und Suchfeld
+                const SizedBox(
+                    width: 10), // Abstand zwischen Dropdown und Suchfeld
                 // Suchfeld
                 Expanded(
                   child: TextField(
@@ -391,84 +394,90 @@ class MainScreenState extends State<MainScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _filteredAlbums.isEmpty
-                ? const Center(child: Text('No albums found'))
-                : ListView.builder(
-              itemCount: _filteredAlbums.length,
-              itemBuilder: (context, index) {
-                final album = _filteredAlbums[index];
-                return ListTile(
-                  title: Text(album.name),
-                  subtitle: Text(album.artist),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () async {
-                          final editedAlbum = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EditAlbumScreen(
-                                album: album,
-                              ),
-                            ),
-                          );
-                          if (editedAlbum != null && editedAlbum is Album) {
-                            setState(() {
-                              int originalIndex = _albums.indexWhere((alb) => alb.id == editedAlbum.id);
-                              if (originalIndex != -1) {
-                                _albums[originalIndex] = editedAlbum;
-                                _sortAlbums(); // Albenliste sortieren
-                              }
-                              _filterAlbums(); // Filter erneut anwenden
-                              _updateCounts(); // Zähler aktualisieren
-                            });
-                            await widget.jsonService.saveAlbums(_albums);
-                          }
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () {
-                          _deleteAlbum(album);
-                        },
-                      ),
-                    ],
-                  ),
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        List<Track> sortedTracks = List.from(album.tracks)
-                          ..sort((a, b) => int.parse(a.trackNumber).compareTo(int.parse(b.trackNumber)));
-                        return AlertDialog(
-                          title: Text(album.name),
-                          content: SingleChildScrollView(
-                            child: Column(
+                    ? const Center(child: Text('No albums found'))
+                    : ListView.builder(
+                        itemCount: _filteredAlbums.length,
+                        itemBuilder: (context, index) {
+                          final album = _filteredAlbums[index];
+                          return ListTile(
+                            title: Text(album.name),
+                            subtitle: Text(album.artist),
+                            trailing: Row(
                               mainAxisSize: MainAxisSize.min,
-                              children: sortedTracks.map((track) {
-                                return ListTile(
-                                  leading: Text("Track ${track.getFormattedTrackNumber()}"),
-                                  title: Text(track.title),
-                                );
-                              }).toList(),
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit),
+                                  onPressed: () async {
+                                    final editedAlbum = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => EditAlbumScreen(
+                                          album: album,
+                                        ),
+                                      ),
+                                    );
+                                    if (editedAlbum != null &&
+                                        editedAlbum is Album) {
+                                      setState(() {
+                                        int originalIndex = _albums.indexWhere(
+                                            (alb) => alb.id == editedAlbum.id);
+                                        if (originalIndex != -1) {
+                                          _albums[originalIndex] = editedAlbum;
+                                          _sortAlbums(); // Albenliste sortieren
+                                        }
+                                        _filterAlbums(); // Filter erneut anwenden
+                                        _updateCounts(); // Zähler aktualisieren
+                                      });
+                                      await widget.jsonService
+                                          .saveAlbums(_albums);
+                                    }
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete),
+                                  onPressed: () {
+                                    _deleteAlbum(album);
+                                  },
+                                ),
+                              ],
                             ),
-                          ),
-                          actions: [
-                            TextButton(
-                              child: const Text("Close"),
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                );
-              },
-            ),
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  List<Track> sortedTracks = List.from(
+                                      album.tracks)
+                                    ..sort((a, b) => int.parse(a.trackNumber)
+                                        .compareTo(int.parse(b.trackNumber)));
+                                  return AlertDialog(
+                                    title: Text(album.name),
+                                    content: SingleChildScrollView(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: sortedTracks.map((track) {
+                                          return ListTile(
+                                            leading: Text(
+                                                "Track ${track.getFormattedTrackNumber()}"),
+                                            title: Text(track.title),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        child: const Text("Close"),
+                                        onPressed: () {
+                                          Navigator.of(context).pop();
+                                        },
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        },
+                      ),
           ),
         ],
       ),
