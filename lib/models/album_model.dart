@@ -1,3 +1,5 @@
+// lib/models/album_model.dart
+
 class Album {
   final String id;
   final String name;
@@ -46,6 +48,29 @@ class Album {
       'digital': digital,
       'tracks': tracks.map((track) => track.toMap()).toList(),
     };
+  }
+
+  // Hinzugefügte copyWith-Methode
+  Album copyWith({
+    String? id,
+    String? name,
+    String? artist,
+    String? genre,
+    String? year,
+    String? medium,
+    bool? digital,
+    List<Track>? tracks,
+  }) {
+    return Album(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      artist: artist ?? this.artist,
+      genre: genre ?? this.genre,
+      year: year ?? this.year,
+      medium: medium ?? this.medium,
+      digital: digital ?? this.digital,
+      tracks: tracks ?? this.tracks,
+    );
   }
 }
 
