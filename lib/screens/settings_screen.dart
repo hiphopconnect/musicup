@@ -1,3 +1,5 @@
+// lib/screens/settings_screen.dart
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../services/json_service.dart';
@@ -108,20 +110,29 @@ class SettingsScreenState extends State<SettingsScreen> {
   Future<void> _importFile(String fileType) async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['json'],
+      allowedExtensions: [fileType],
     );
 
     if (result != null && result.files.isNotEmpty) {
       String? selectedPath = result.files.single.path;
       if (selectedPath != null) {
         try {
-          await widget.jsonService.importAlbums(selectedPath);
+          if (fileType == 'json') {
+            await widget.jsonService.importAlbums(selectedPath);
+          } else if (fileType == 'csv') {
+            await widget.jsonService.importCsv(selectedPath);
+          } else if (fileType == 'xml') {
+            await widget.jsonService.importXml(selectedPath);
+          }
 
           if (!mounted) return;
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('$fileType-File imported: $selectedPath')),
           );
+
+          // Pop back to MainScreen and signal that albums have been updated
+          Navigator.pop(context, true);
         } catch (e) {
           if (!mounted) return;
 
@@ -177,6 +188,7 @@ class SettingsScreenState extends State<SettingsScreen> {
               child: const Text('Save'),
             ),
             const SizedBox(height: 16),
+            // Export Buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -195,9 +207,23 @@ class SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => _importFile('json'),
-              child: const Text('Import JSON'),
+            // Import Buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: () => _importFile('json'),
+                  child: const Text('Import JSON'),
+                ),
+                ElevatedButton(
+                  onPressed: () => _importFile('xml'),
+                  child: const Text('Import XML'),
+                ),
+                ElevatedButton(
+                  onPressed: () => _importFile('csv'),
+                  child: const Text('Import CSV'),
+                ),
+              ],
             ),
           ],
         ),
