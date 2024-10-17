@@ -1,11 +1,13 @@
 // lib/screens/settings_screen.dart
 
 import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import '../services/json_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:file_picker/file_picker.dart';
+
+import '../services/json_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final JsonService jsonService;
@@ -17,14 +19,11 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class SettingsScreenState extends State<SettingsScreen> {
-  TextEditingController jsonFileNameController = TextEditingController();
   TextEditingController jsonPathController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    jsonFileNameController.text =
-        widget.jsonService.configManager.getJsonFileName();
     jsonPathController.text =
         widget.jsonService.configManager.getJsonFilePath() ?? '';
   }
@@ -56,8 +55,6 @@ class SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _saveSettings() async {
-    String fileName = jsonFileNameController.text;
-    await widget.jsonService.configManager.setJsonFileName(fileName);
     await widget.jsonService.configManager.saveConfig();
 
     if (!mounted) return;
@@ -71,7 +68,7 @@ class SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _exportFile(String fileType) async {
     if (Platform.isIOS || Platform.isAndroid) {
-      // Auf mobilen Plattformen teilen wir die Datei
+      // On mobile platforms, share the file
       String tempDir = (await getTemporaryDirectory()).path;
       String exportPath = '$tempDir/albums_export.$fileType';
 
@@ -86,7 +83,7 @@ class SettingsScreenState extends State<SettingsScreen> {
       await Share.shareXFiles([XFile(exportPath)],
           text: 'Here is my album list');
     } else {
-      // Auf Desktop-Plattformen verwenden wir den Dateipicker
+      // On desktop platforms, use file picker
       String? filePath = await FilePicker.platform.saveFile(
         dialogTitle: 'Export $fileType File',
         fileName: 'albums_export.$fileType',
@@ -163,10 +160,6 @@ class SettingsScreenState extends State<SettingsScreen> {
           children: [
             Text(platformInfo),
             const SizedBox(height: 16),
-            TextField(
-              controller: jsonFileNameController,
-              decoration: const InputDecoration(labelText: 'JSON-Filename'),
-            ),
             if (!Platform.isIOS && !Platform.isAndroid) ...[
               const SizedBox(height: 16),
               Row(
@@ -181,7 +174,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(width: 16),
                   ElevatedButton(
                     onPressed: _pickJsonFile,
-                    child: const Text('JSON-File select'),
+                    child: const Text('Select JSON-File'),
                   ),
                 ],
               ),
@@ -189,7 +182,7 @@ class SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _saveSettings,
-              child: const Text('Save'),
+              child: const Text('Save Settings'),
             ),
             const SizedBox(height: 16),
             // Export Buttons

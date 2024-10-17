@@ -3,5 +3,5 @@ Version: 1.0
 Section: base
 Priority: optional
 Architecture: amd64
-Maintainer: Dein Name <deinemail@example.com>
-Description: MusicUp - Ein Musik-Management-Tool für Linux
+Maintainer: Your Name <youremail@example.com>
+Description: MusicUp - A Music Management Tool for Linux
