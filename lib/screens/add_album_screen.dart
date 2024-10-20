@@ -189,6 +189,7 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
     );
   }
 
+  //Test
   void _addTrack() {
     setState(() {
       int trackNumber = tracks.length + 1;
