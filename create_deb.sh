@@ -5,6 +5,15 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Project information
+PACKAGE_NAME="music-up"
+VERSION="1.0.0"
+ARCH="amd64"
+MAINTAINER="Michael Milke (Nobo) <nobo_code@posteo.de>"
+DESCRIPTION="MusicUp - A Music Management Tool for Linux"
+LICENSE="GPL-3.0"
+REPOSITORY="https://github.com/hiphopconnect/musicup"
+
 echo -e "${GREEN}Enabling Linux support for Flutter...${NC}"
 flutter config --enable-linux-desktop
 
@@ -13,11 +22,6 @@ flutter build linux
 
 # Create directory structure for the .deb package
 echo -e "${GREEN}Creating directory structure for the Debian package...${NC}"
-PACKAGE_NAME="music-up"
-VERSION="1.0"
-ARCH="amd64"
-MAINTAINER="Your Name <youremail@example.com>"
-DESCRIPTION="MusicUp - A Music Management Tool for Linux"
 
 # Create package directories
 mkdir -p package/DEBIAN
@@ -33,6 +37,8 @@ Priority: optional
 Architecture: $ARCH
 Maintainer: $MAINTAINER
 Description: $DESCRIPTION
+License: $LICENSE
+Homepage: $REPOSITORY
 EOF
 
 # Copy the Flutter build into the package directory
@@ -70,7 +76,7 @@ cp assets/icons/music_up_icon.png ~/.local/share/icons/music_up_icon.png
 
 cat <<EOF > $DESKTOP_FILE_PATH
 [Desktop Entry]
-Version=1.0
+Version=$VERSION
 Name=MusicUp
 Comment=Music Management Application
 Exec=/usr/local/bin/$PACKAGE_NAME/music_up

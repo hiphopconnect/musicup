@@ -1,5 +1,11 @@
 name: music_up
-description: A new Flutter project.
+description: A music management tool for Linux, written in Flutter.
+
+# Maintainer Information
+maintainer: Michael Milke (Nobo)
+maintainer_email: nobo_code@posteo.de
+repository: https://github.com/hiphopconnect/musicup/
+version: 1.0.0+1
 
 publish_to: 'none' # Do not publish this package.
 

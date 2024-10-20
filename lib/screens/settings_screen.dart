@@ -54,18 +54,6 @@ class SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _saveSettings() async {
-    await widget.jsonService.configManager.saveConfig();
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Settings saved!')),
-    );
-
-    Navigator.pop(context, true);
-  }
-
   Future<void> _exportFile(String fileType) async {
     if (Platform.isIOS || Platform.isAndroid) {
       // On mobile platforms, share the file
@@ -180,14 +168,11 @@ class SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _saveSettings,
-              child: const Text('Save Settings'),
-            ),
-            const SizedBox(height: 16),
-            // Export Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            // Export Buttons in a row
+            Wrap(
+              spacing: 16.0, // space between buttons
+              runSpacing: 8.0, // space between rows
+              alignment: WrapAlignment.center,
               children: [
                 ElevatedButton(
                   onPressed: () => _exportFile('json'),
@@ -204,9 +189,11 @@ class SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            // Import Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            // Import Buttons in a row
+            Wrap(
+              spacing: 16.0, // space between buttons
+              runSpacing: 8.0, // space between rows
+              alignment: WrapAlignment.center,
               children: [
                 ElevatedButton(
                   onPressed: () => _importFile('json'),
@@ -221,6 +208,20 @@ class SettingsScreenState extends State<SettingsScreen> {
                   child: const Text('Import CSV'),
                 ),
               ],
+            ),
+            const Spacer(),
+            const Align(
+              alignment: Alignment.bottomLeft,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Maintainer: Michael Milke (Nobo)'),
+                  Text('Email: nobo_code@posteo.de'),
+                  Text('GitHub: https://github.com/hiphopconnect/musicup/'),
+                  Text('License: GPL-3.0'),
+                  Text('Version: 1.0.0'),
+                ],
+              ),
             ),
           ],
         ),

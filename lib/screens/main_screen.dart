@@ -2,10 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:music_up/models/album_model.dart';
-import 'package:music_up/services/json_service.dart';
 import 'package:music_up/screens/add_album_screen.dart';
 import 'package:music_up/screens/edit_album_screen.dart';
 import 'package:music_up/screens/settings_screen.dart'; // Importiere die SettingsScreen
+import 'package:music_up/services/json_service.dart';
 
 class MainScreen extends StatefulWidget {
   final JsonService jsonService;
@@ -66,7 +66,7 @@ class MainScreenState extends State<MainScreen> {
 
       if (!mounted) return;
       setState(() {
-        _albums = albums;
+        _albums = albums.isNotEmpty ? albums : [];
         _sortAlbums(); // Albenliste sortieren
         _filteredAlbums = _albums;
         _isLoading = false;

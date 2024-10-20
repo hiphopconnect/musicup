@@ -10,9 +10,9 @@ class ConfigManager {
     _prefs = await SharedPreferences.getInstance();
   }
 
-  Future<void> setJsonFileName(String fileName) async {
+  Future<void> setJsonFileName(String filePath) async {
     if (_prefs != null) {
-      await _prefs!.setString(jsonFileNameKey, fileName);
+      await _prefs!.setString(jsonFileNameKey, filePath);
     }
   }
 
@@ -20,7 +20,6 @@ class ConfigManager {
     return _prefs?.getString(jsonFileNameKey) ?? 'albums.json';
   }
 
-  // **Hier fügen wir die fehlende Methode hinzu**
   Future<void> setJsonFilePath(String filePath) async {
     if (_prefs != null) {
       await _prefs!.setString(jsonFilePathKey, filePath);

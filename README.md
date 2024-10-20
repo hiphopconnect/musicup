@@ -140,4 +140,4 @@ For more information, please refer to the [official GPLv3 license](https://www.g
 ## Contact
 
 For any inquiries or feedback, feel free to contact me
-at [Nobo](mailto:nobo_github@posteo.de?subject=[GitHub]%Source%20MusicUP).
+at [Nobo](mailto:nobo_code@posteo.de?subject=[GitHub]%Source%20MusicUP).

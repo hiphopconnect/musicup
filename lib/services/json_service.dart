@@ -2,12 +2,13 @@
 
 import 'dart:convert';
 import 'dart:io';
+
+import 'package:csv/csv.dart';
+import 'package:flutter/foundation.dart'; // For listEquals
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/services/config_manager.dart';
-import 'package:csv/csv.dart';
-import 'package:xml/xml.dart' as xml;
-import 'package:flutter/foundation.dart'; // For listEquals
 import 'package:uuid/uuid.dart'; // For UUID generation
+import 'package:xml/xml.dart' as xml;
 
 class JsonService {
   final ConfigManager configManager;
@@ -29,7 +30,17 @@ class JsonService {
     }
 
     String contents = await file.readAsString();
+
+    if (contents.isEmpty || contents == '[]') {
+      return [];
+    }
+
     List<dynamic> jsonData = json.decode(contents);
+
+    if (jsonData.isEmpty) {
+      return [];
+    }
+
     return jsonData
         .map((item) => Album.fromMap(item as Map<String, dynamic>))
         .toList();
