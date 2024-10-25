@@ -1,40 +1,52 @@
-// test/json_service_test.dart
-
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/services/config_manager.dart';
 import 'package:music_up/services/json_service.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class MockPathProviderPlatform extends Mock implements PathProviderPlatform {}
+// Helper function to mock the path provider behavior
+class FakePathProviderPlatform extends PathProviderPlatform {
+  @override
+  Future<String?> getApplicationDocumentsPath() async {
+    return '/mock/documents';
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
   group('JsonService Tests', () {
     late JsonService jsonService;
     late Directory tempDir;
     late String testJsonFilePath;
 
     setUpAll(() async {
-      final mockPathProviderPlatform = MockPathProviderPlatform();
-      PathProviderPlatform.instance = mockPathProviderPlatform;
+      // Set the mock platform instance for path provider
+      PathProviderPlatform.instance = FakePathProviderPlatform();
+
+      // Set mock initial values for SharedPreferences
+      SharedPreferences.setMockInitialValues({});
+
       // Create a temporary directory for testing
       tempDir = await Directory.systemTemp.createTemp('music_up_test');
       testJsonFilePath = '${tempDir.path}/test_albums.json';
 
       // Initialize ConfigManager and JsonService
       ConfigManager configManager = ConfigManager();
+      await configManager.loadConfig();
       await configManager.setJsonFilePath(testJsonFilePath);
       jsonService = JsonService(configManager);
     });
 
     tearDownAll(() async {
       // Clean up the temporary directory after tests
-      await tempDir.delete(recursive: true);
+      if (tempDir.existsSync()) {
+        await tempDir.delete(recursive: true);
+      }
     });
 
     test('Export and Import JSON', () async {
@@ -167,15 +179,15 @@ void main() {
       // Prepare initial data
       List<Album> initialAlbums = [
         Album(
-          id: '4',
-          name: 'Duplicate Album',
-          artist: 'Duplicate Artist',
-          genre: 'Genre',
-          year: '2024',
+          id: '1',
+          name: 'Test Album',
+          artist: 'Artist 1',
+          genre: 'Genre 1',
+          year: '2021',
           medium: 'CD',
           digital: false,
           tracks: [
-            Track(title: 'Track A', trackNumber: '01'),
+            Track(title: 'Track 1', trackNumber: '01'),
           ],
         ),
       ];
@@ -185,15 +197,15 @@ void main() {
       // Prepare import data
       List<Album> importAlbums = [
         Album(
-          id: '5',
-          name: 'Duplicate Album',
-          artist: 'Duplicate Artist',
-          genre: 'Genre',
-          year: '2024',
+          id: '2',
+          name: 'Test Album',
+          artist: 'Artist 1',
+          genre: 'Genre 1',
+          year: '2021',
           medium: 'CD',
           digital: false,
           tracks: [
-            Track(title: 'Track B', trackNumber: '02'),
+            Track(title: 'Track 2', trackNumber: '02'),
           ],
         ),
       ];
@@ -210,9 +222,13 @@ void main() {
       // Load albums
       List<Album> allAlbums = await jsonService.loadAlbums();
 
-      // Verify that only one album exists and tracks are merged
-      expect(allAlbums.length, 1);
-      expect(allAlbums[0].tracks.length, 2);
+      // Verify that the album exists and tracks are merged
+      expect(allAlbums.length, 1); // Only one album should exist
+      expect(allAlbums[0].tracks.length, 2); // The album should have two tracks
+      expect(
+          allAlbums[0].tracks.any((track) => track.title == 'Track 1'), isTrue);
+      expect(
+          allAlbums[0].tracks.any((track) => track.title == 'Track 2'), isTrue);
     });
   });
 }

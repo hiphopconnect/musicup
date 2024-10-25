@@ -1,5 +1,3 @@
-// lib/screens/main_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/screens/add_album_screen.dart';
@@ -42,7 +40,7 @@ class MainScreenState extends State<MainScreen> {
   };
 
   // Filtervariable für Digital-Status
-  String _digitalFilter = 'All'; // Optionen: 'Alle', 'Ja', 'Nein'
+  String _digitalFilter = 'All'; // Optionen: 'All', 'Yes', 'No'
 
   // Variable für Sortierreihenfolge
   bool _isAscending = true; // true = A-Z, false = Z-A
@@ -100,9 +98,6 @@ class MainScreenState extends State<MainScreen> {
   }
 
   void _updateCounts() {
-    // Wenn du die Zähler basierend auf den gefilterten Alben anzeigen möchtest, verwende _filteredAlbums
-    // List<Album> albumsToCount = _filteredAlbums;
-    // Wenn du die Zähler basierend auf allen Alben anzeigen möchtest, verwende _albums
     List<Album> albumsToCount = _albums;
 
     vinylCount = 0;
@@ -127,7 +122,6 @@ class MainScreenState extends State<MainScreen> {
           digitalCount++;
           break;
         default:
-          // Unbekannte Medien ignorieren oder behandeln
           break;
       }
 
@@ -251,7 +245,6 @@ class MainScreenState extends State<MainScreen> {
             tooltip: _isAscending ? 'Sort Z-A' : 'Sort A-Z',
             onPressed: _toggleSortOrder,
           ),
-          // Entferne die Reset-Schaltfläche aus der AppBar
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
@@ -454,13 +447,35 @@ class MainScreenState extends State<MainScreen> {
                                     content: SingleChildScrollView(
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
-                                        children: sortedTracks.map((track) {
-                                          return ListTile(
-                                            leading: Text(
-                                                "Track ${track.getFormattedTrackNumber()}"),
-                                            title: Text(track.title),
-                                          );
-                                        }).toList(),
+                                        children: [
+                                          // Album-Informationen anzeigen
+                                          ListTile(
+                                            leading: const Icon(
+                                                Icons.calendar_today),
+                                            title: const Text("Year"),
+                                            subtitle: Text(album.year),
+                                          ),
+                                          ListTile(
+                                            leading: const Icon(Icons.album),
+                                            title: const Text("Medium"),
+                                            subtitle: Text(album.medium),
+                                          ),
+                                          ListTile(
+                                            leading: const Icon(Icons.cloud),
+                                            title: const Text("Digital"),
+                                            subtitle: Text(
+                                                album.digital ? "Yes" : "No"),
+                                          ),
+                                          const Divider(),
+                                          // Tracks anzeigen
+                                          ...sortedTracks.map((track) {
+                                            return ListTile(
+                                              leading: Text(
+                                                  "Track ${track.getFormattedTrackNumber()}"),
+                                              title: Text(track.title),
+                                            );
+                                          }),
+                                        ],
                                       ),
                                     ),
                                     actions: [

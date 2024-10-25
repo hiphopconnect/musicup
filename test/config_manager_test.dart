@@ -12,15 +12,18 @@ void main() {
       // Set up the mock SharedPreferences
       SharedPreferences.setMockInitialValues({});
       configManager = ConfigManager();
+      await configManager.loadConfig();
     });
 
     test('Should save and retrieve JSON file name', () async {
+      await configManager.loadConfig();
       await configManager.setJsonFileName('test.json');
       String fileName = configManager.getJsonFileName();
       expect(fileName, 'test.json');
     });
-
+    
     test('Should save and retrieve JSON file path', () async {
+      await configManager.loadConfig();
       await configManager.setJsonFilePath('/path/to/test.json');
       String? filePath = configManager.getJsonFilePath();
       expect(filePath, '/path/to/test.json');
