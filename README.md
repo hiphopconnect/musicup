@@ -33,13 +33,16 @@ a seamless experience for importing, exporting, and maintaining your album data.
 
 ## Screenshots
 
-![Main Screen](screenshots/main_screen.png)
+<img src="screenshots/main_screen.png" alt="Main Screen" width="400"/>
+
 *Main Screen displaying a list of albums.*
 
-![Add Album](screenshots/add_album.png)
+<img src="screenshots/add_album.png" alt="Add Album" width="400"/>
+
 *Add Album screen with form fields.*
 
-![Export Options](screenshots/export_options.png)
+<img src="screenshots/export_options.png" alt="Export Options" width="400"/>
+
 *Exporting albums in different formats.*
 
 ## Installation
@@ -122,7 +125,9 @@ request. Make sure to follow best practices when contributing.
 
 ## Project Background
 
-I also have a repository with a Swift version of this software, which I originally developed on Swift/IOS. My initial thought was, "Great! Just one codebase, and I can publish on all platforms." However, I quickly ran into dependency issues that became difficult to resolve.
+I also have a repository with a Swift version of this software, which I originally developed on Swift/IOS. My initial
+thought was, "Great! Just one codebase, and I can publish on all platforms." However, I quickly ran into dependency
+issues that became difficult to resolve.
 
 As a result, I developed the mobile version of the software for my iPhone in Swift.
 
@@ -131,7 +136,6 @@ As a result, I developed the mobile version of the software for my iPhone in Swi
 1. A Kotlin version for Android.
 2. A Flutter version for Android, iOS, Windows, and Mac.
 3. Adding a scanner to load data from a database like CDDB.
-
 
 ## License
 
