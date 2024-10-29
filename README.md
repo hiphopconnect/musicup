@@ -120,6 +120,19 @@ Currently, I have only tested the Linux desktop version, specifically on Linux M
 Contributions are welcome! If you have ideas or improvements, feel free to fork the repository and submit a pull
 request. Make sure to follow best practices when contributing.
 
+## Project Background
+
+I also have a repository with a Swift version of this software, which I originally developed on Swift/IOS. My initial thought was, "Great! Just one codebase, and I can publish on all platforms." However, I quickly ran into dependency issues that became difficult to resolve.
+
+As a result, I developed the mobile version of the software for my iPhone in Swift.
+
+### Future Plans
+
+1. A Kotlin version for Android.
+2. A Flutter version for Android, iOS, Windows, and Mac.
+3. Adding a scanner to load data from a database like CDDB.
+
+
 ## License
 
 **MusicUp** is licensed under the **GNU General Public License v3.0** - see
