@@ -24,7 +24,10 @@ a seamless experience for importing, exporting, and maintaining your album data.
 ## Features
 
 - **Add Albums:** Easily add new albums with details such as name, artist, genre, year, medium, and digital
-  availability.
+  availability. Starting from version 1.3.1, you can also fetch song title information from folder structures. This
+  works by pressing the folder button in the Add Album section and selecting a folder. The album name is extracted
+  from the folder name, and MP3 files in the folder must be formatted as '01 - Tracktitle.mp3'. The track titles and
+  track numbers are then automatically fetched from the files in the folder.
 - **Edit Albums:** Modify existing album information to keep your collection up-to-date.
 - **Import/Export:** Support for importing and exporting album data in JSON, CSV, and XML formats.
 - **Duplicate Prevention:** Automatically avoids adding duplicate albums during import.

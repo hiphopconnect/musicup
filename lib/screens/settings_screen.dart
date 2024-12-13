@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -20,12 +21,25 @@ class SettingsScreen extends StatefulWidget {
 
 class SettingsScreenState extends State<SettingsScreen> {
   TextEditingController jsonPathController = TextEditingController();
+  String appVersion = 'Loading...';
 
   @override
   void initState() {
     super.initState();
-    jsonPathController.text =
-        widget.jsonService.configManager.getJsonFilePath() ?? '';
+    _initializeSettings();
+  }
+
+  Future<void> _initializeSettings() async {
+    String? jsonPath = widget.jsonService.configManager.getJsonFilePath();
+    setState(() {
+      jsonPathController.text = jsonPath ?? '';
+    });
+
+    // Retrieve version information
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    setState(() {
+      appVersion = packageInfo.version; // z.B. "1.2.0"
+    });
   }
 
   Future<void> _pickJsonFile() async {
@@ -56,7 +70,7 @@ class SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _exportFile(String fileType) async {
     if (Platform.isIOS || Platform.isAndroid) {
-      // On mobile platforms, share the file
+      // Share the file on mobile platforms
       String tempDir = (await getTemporaryDirectory()).path;
       String exportPath = '$tempDir/albums_export.$fileType';
 
@@ -71,7 +85,7 @@ class SettingsScreenState extends State<SettingsScreen> {
       await Share.shareXFiles([XFile(exportPath)],
           text: 'Here is my album list');
     } else {
-      // On desktop platforms, use file picker
+      // Use the file picker on desktop platforms
       String? filePath = await FilePicker.platform.saveFile(
         dialogTitle: 'Export $fileType File',
         fileName: 'albums_export.$fileType',
@@ -119,7 +133,7 @@ class SettingsScreenState extends State<SettingsScreen> {
             SnackBar(content: Text('$fileType-File imported: $selectedPath')),
           );
 
-          // Pop back to MainScreen and signal that albums have been updated
+          // Navigate back to the main page and signal that albums have been updated
           Navigator.pop(context, true);
         } catch (e) {
           if (!mounted) return;
@@ -210,16 +224,17 @@ class SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
             const Spacer(),
-            const Align(
+            Align(
               alignment: Alignment.bottomLeft,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Maintainer: Michael Milke (Nobo)'),
-                  Text('Email: nobo_code@posteo.de'),
-                  Text('GitHub: https://github.com/hiphopconnect/musicup/'),
-                  Text('License: GPL-3.0'),
-                  Text('Version: 1.0.0'),
+                  const Text('Maintainer: Michael Milke (Nobo)'),
+                  const Text('Email: nobo_code@posteo.de'),
+                  const Text(
+                      'GitHub: https://github.com/hiphopconnect/musicup/'),
+                  const Text('License: GPL-3.0'),
+                  Text('Version: $appVersion'),
                 ],
               ),
             ),
