@@ -1,0 +1,4 @@
+#Sun Oct 27 20:17:21 CET 2024
+base.0=/home/hiphopconnect/IdeaProjects/music_up/android/app/build/intermediates/dex/release/minifyReleaseWithR8/classes.dex
+path.0=classes.dex
+renamed.0=classes.dex
