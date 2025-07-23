@@ -30,6 +30,9 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+# Build-Dateien
+android/app/build/
+build/
 
 # Symbolication related
 app.*.symbols
