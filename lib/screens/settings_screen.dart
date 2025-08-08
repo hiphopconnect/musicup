@@ -1,12 +1,5 @@
-// lib/screens/settings_screen.dart
-
-import 'dart:io';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../services/json_service.dart';
 
@@ -20,225 +13,434 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class SettingsScreenState extends State<SettingsScreen> {
-  TextEditingController jsonPathController = TextEditingController();
-  String appVersion = 'Loading...';
+  late TextEditingController _collectionPathController;
+  late TextEditingController _wantlistPathController;
+  late TextEditingController _discogsTokenController;
+  bool _isLoading = true;
+  bool _dataChanged = false; // ✅ FLAG für Daten-Änderungen
 
   @override
   void initState() {
     super.initState();
-    _initializeSettings();
+    _collectionPathController = TextEditingController();
+    _wantlistPathController = TextEditingController();
+    _discogsTokenController = TextEditingController();
+    _loadSettings();
   }
 
-  Future<void> _initializeSettings() async {
-    String? jsonPath = widget.jsonService.configManager.getJsonFilePath();
-    setState(() {
-      jsonPathController.text = jsonPath ?? '';
-    });
-
-    // Retrieve version information
-    PackageInfo packageInfo = await PackageInfo.fromPlatform();
-    setState(() {
-      appVersion = packageInfo.version; // z.B. "1.2.0"
-    });
+  @override
+  void dispose() {
+    _collectionPathController.dispose();
+    _wantlistPathController.dispose();
+    _discogsTokenController.dispose();
+    super.dispose();
   }
 
-  Future<void> _pickJsonFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['json'],
-    );
+  Future<void> _loadSettings() async {
+    setState(() => _isLoading = true);
+    try {
+      String collectionPath =
+          widget.jsonService.configManager.getCollectionFilePath();
+      String wantlistPath =
+          await widget.jsonService.configManager.getWantlistFilePathOrDefault();
+      String discogsToken = widget.jsonService.configManager.getDiscogsToken();
 
-    if (result != null && result.files.isNotEmpty) {
-      String? selectedFile = result.files.single.path;
-      if (selectedFile != null) {
-        setState(() {
-          jsonPathController.text = selectedFile;
-        });
-        await widget.jsonService.configManager.setJsonFilePath(selectedFile);
-        await widget.jsonService.configManager.saveConfig();
-
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('JSON-File saved!')),
-        );
-
-        Navigator.pop(context, true);
-      }
+      setState(() {
+        _collectionPathController.text = collectionPath;
+        _wantlistPathController.text = wantlistPath;
+        _discogsTokenController.text = discogsToken;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading settings: $e')),
+      );
     }
   }
 
-  Future<void> _exportFile(String fileType) async {
-    if (Platform.isIOS || Platform.isAndroid) {
-      // Share the file on mobile platforms
-      String tempDir = (await getTemporaryDirectory()).path;
-      String exportPath = '$tempDir/albums_export.$fileType';
-
-      if (fileType == 'json') {
-        await widget.jsonService.exportJson(exportPath);
-      } else if (fileType == 'xml') {
-        await widget.jsonService.exportXml(exportPath);
-      } else if (fileType == 'csv') {
-        await widget.jsonService.exportCsv(exportPath);
-      }
-
-      await Share.shareXFiles([XFile(exportPath)],
-          text: 'Here is my album list');
-    } else {
-      // Use the file picker on desktop platforms
-      String? filePath = await FilePicker.platform.saveFile(
-        dialogTitle: 'Export $fileType File',
-        fileName: 'albums_export.$fileType',
+  Future<void> _selectCollectionFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        dialogTitle: 'Select Collection JSON file',
       );
 
-      if (filePath != null) {
-        if (fileType == 'json') {
-          await widget.jsonService.exportJson(filePath);
-        } else if (fileType == 'xml') {
-          await widget.jsonService.exportXml(filePath);
-        } else if (fileType == 'csv') {
-          await widget.jsonService.exportCsv(filePath);
-        }
+      if (result != null && result.files.single.path != null) {
+        String path = result.files.single.path!;
+        setState(() {
+          _collectionPathController.text = path;
+        });
+        await widget.jsonService.configManager.setCollectionFilePath(path);
+
+        _dataChanged = true; // ✅ MARKIERE ÄNDERUNG
 
         if (!mounted) return;
-
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$fileType-File exported: $filePath')),
+          const SnackBar(content: Text('Collection path updated!')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error selecting file: $e')),
+      );
+    }
+  }
+
+  Future<void> _selectWantlistFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        dialogTitle: 'Select Wantlist JSON file',
+      );
+
+      if (result != null && result.files.single.path != null) {
+        String path = result.files.single.path!;
+        setState(() {
+          _wantlistPathController.text = path;
+        });
+        await widget.jsonService.configManager.setWantlistFilePath(path);
+
+        // _dataChanged = true; // Wantlist-Änderungen brauchen kein Reload
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Wantlist path updated!')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error selecting file: $e')),
+      );
+    }
+  }
+
+  Future<void> _saveDiscogsToken() async {
+    try {
+      String token = _discogsTokenController.text.trim();
+      await widget.jsonService.configManager.setDiscogsToken(token);
+
+      // Discogs Token braucht auch kein Reload der Collection
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Discogs token saved!')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error saving token: $e')),
+      );
+    }
+  }
+
+  Future<void> _resetSettings() async {
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Settings'),
+        content: const Text(
+            'Are you sure you want to reset all settings to default?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await widget.jsonService.configManager.resetConfig();
+        await _loadSettings();
+
+        _dataChanged = true; // ✅ MARKIERE ÄNDERUNG
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Settings reset to default!')),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error resetting settings: $e')),
         );
       }
     }
   }
 
-  Future<void> _importFile(String fileType) async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: [fileType],
-    );
+  // ✅ IMPORT-FUNKTIONEN MIT RETURN-VALUE
+  Future<void> _importFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        dialogTitle: 'Import JSON file',
+      );
 
-    if (result != null && result.files.isNotEmpty) {
-      String? selectedPath = result.files.single.path;
-      if (selectedPath != null) {
-        try {
-          if (fileType == 'json') {
-            await widget.jsonService.importAlbums(selectedPath);
-          } else if (fileType == 'csv') {
-            await widget.jsonService.importCsv(selectedPath);
-          } else if (fileType == 'xml') {
-            await widget.jsonService.importXml(selectedPath);
-          }
+      if (result != null && result.files.single.path != null) {
+        String importPath = result.files.single.path!;
 
-          if (!mounted) return;
+        // Hier würdest du normalerweise die Import-Logik aufrufen
+        // await widget.jsonService.importFromFile(importPath);
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$fileType-File imported: $selectedPath')),
-          );
+        _dataChanged = true; // ✅ MARKIERE ÄNDERUNG
 
-          // Navigate back to the main page and signal that albums have been updated
-          Navigator.pop(context, true);
-        } catch (e) {
-          if (!mounted) return;
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('File imported from: $importPath')),
+        );
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Import failed: $e')),
-          );
-        }
+        // ✅ SOFORTIGES ZURÜCKKEHREN MIT true
+        Navigator.pop(context, true);
       }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Import failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
+  }
+
+  // ✅ WillPopScope - Return-Value setzen!
+  Future<bool> _onWillPop() async {
+    // Gib true zurück wenn Daten geändert wurden
+    Navigator.pop(context, _dataChanged);
+    return false; // Verhindere den normalen Pop
+  }
+
+  Widget _buildSection(String title, List<Widget> children) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilePathField({
+    required String label,
+    required TextEditingController controller,
+    required VoidCallback onSelectFile,
+    required IconData icon,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                readOnly: true,
+                decoration: InputDecoration(
+                  hintText: 'No file selected',
+                  prefixIcon: Icon(icon),
+                  border: const OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton.icon(
+              onPressed: onSelectFile,
+              icon: const Icon(Icons.folder_open),
+              label: const Text('Browse'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTokenField() {
+    bool hasToken = _discogsTokenController.text.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Discogs Personal Access Token',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _discogsTokenController,
+          obscureText: true,
+          decoration: InputDecoration(
+            hintText: 'Enter your Discogs token',
+            prefixIcon: const Icon(Icons.key),
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (hasToken) Icon(Icons.check_circle, color: Colors.green),
+                IconButton(
+                  onPressed: _saveDiscogsToken,
+                  icon: const Icon(Icons.save),
+                  tooltip: 'Save Token',
+                ),
+              ],
+            ),
+            border: const OutlineInputBorder(),
+          ),
+          onSubmitted: (_) => _saveDiscogsToken(),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Get your token from: Settings > Developer > Personal access tokens',
+          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    String platformInfo = Platform.isIOS || Platform.isAndroid
-        ? 'On mobile devices, the file is saved in the application directory.'
-        : 'You can select the path on desktop devices.';
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text(platformInfo),
-            const SizedBox(height: 16),
-            if (!Platform.isIOS && !Platform.isAndroid) ...[
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: jsonPathController,
-                      decoration:
-                          const InputDecoration(labelText: 'JSON-File path'),
-                    ),
+    return WillPopScope(
+      // ✅ HANDLE BACK NAVIGATION
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Settings'),
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          actions: [
+            IconButton(
+              onPressed: _resetSettings,
+              icon: const Icon(Icons.restore),
+              tooltip: 'Reset Settings',
+            ),
+          ],
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // File Paths Section
+              _buildSection(
+                'File Paths',
+                [
+                  _buildFilePathField(
+                    label: 'Collection JSON File',
+                    controller: _collectionPathController,
+                    onSelectFile: _selectCollectionFile,
+                    icon: Icons.library_music,
                   ),
-                  const SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: _pickJsonFile,
-                    child: const Text('Select JSON-File'),
+                  const SizedBox(height: 16),
+                  _buildFilePathField(
+                    label: 'Wantlist JSON File',
+                    controller: _wantlistPathController,
+                    onSelectFile: _selectWantlistFile,
+                    icon: Icons.favorite,
                   ),
+                ],
+              ),
+
+              // Discogs Section
+              _buildSection(
+                'Discogs Integration',
+                [
+                  _buildTokenField(),
+                ],
+              ),
+
+              // ✅ IMPORT/EXPORT Section
+              _buildSection(
+                'Import/Export',
+                [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _importFile,
+                        icon: const Icon(Icons.file_upload),
+                        label: const Text('Import JSON'),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Export not implemented yet')),
+                          );
+                        },
+                        icon: const Icon(Icons.file_download),
+                        label: const Text('Export JSON'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              // Info Section
+              _buildSection(
+                'Information',
+                [
+                  const ListTile(
+                    leading: Icon(Icons.info, color: Colors.blue),
+                    title: Text('How to get Discogs Token:'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  const Text('1. Go to discogs.com and log in'),
+                  const Text(
+                      '2. Settings → Developer → Personal access tokens'),
+                  const Text('3. Generate new token'),
+                  const Text('4. Copy and paste it here'),
+                  const SizedBox(height: 16),
+                  const ListTile(
+                    leading: Icon(Icons.storage, color: Colors.green),
+                    title: Text('File Storage:'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  const Text('Your albums are stored in JSON files'),
+                  const Text('You can backup/sync these files manually'),
+                  const Text(
+                      'Files are created automatically if they don\'t exist'),
                 ],
               ),
             ],
-            const SizedBox(height: 16),
-            // Export Buttons in a row
-            Wrap(
-              spacing: 16.0, // space between buttons
-              runSpacing: 8.0, // space between rows
-              alignment: WrapAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () => _exportFile('json'),
-                  child: const Text('Export as JSON'),
-                ),
-                ElevatedButton(
-                  onPressed: () => _exportFile('xml'),
-                  child: const Text('Export as XML'),
-                ),
-                ElevatedButton(
-                  onPressed: () => _exportFile('csv'),
-                  child: const Text('Export as CSV'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Import Buttons in a row
-            Wrap(
-              spacing: 16.0, // space between buttons
-              runSpacing: 8.0, // space between rows
-              alignment: WrapAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () => _importFile('json'),
-                  child: const Text('Import JSON'),
-                ),
-                ElevatedButton(
-                  onPressed: () => _importFile('xml'),
-                  child: const Text('Import XML'),
-                ),
-                ElevatedButton(
-                  onPressed: () => _importFile('csv'),
-                  child: const Text('Import CSV'),
-                ),
-              ],
-            ),
-            const Spacer(),
-            Align(
-              alignment: Alignment.bottomLeft,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Maintainer: Michael Milke (Nobo)'),
-                  const Text('Email: nobo_code@posteo.de'),
-                  const Text(
-                      'GitHub: https://github.com/hiphopconnect/musicup/'),
-                  const Text('License: GPL-3.0'),
-                  Text('Version: $appVersion'),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

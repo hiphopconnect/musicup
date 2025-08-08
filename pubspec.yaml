@@ -28,6 +28,7 @@ dependencies:
   xml: ^6.1.0                 # Stabil
   logger: ^1.4.0              # Stabil (nicht 2.x!)
   package_info_plus: ^8.1.1   # OK
+  http: ^1.1.0
 
 dev_dependencies:
   flutter_test:

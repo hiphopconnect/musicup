@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:music_up/screens/main_screen.dart';
 import 'package:music_up/services/config_manager.dart';
 import 'package:music_up/services/json_service.dart';
-import 'package:music_up/screens/main_screen.dart';
-import 'package:music_up/screens/settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,11 +31,6 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       home: MainScreen(jsonService: jsonService), // Übergibt jsonService hier
-      routes: {
-        '/settings': (context) => SettingsScreen(
-            jsonService:
-                jsonService), // Korrigiert die Übergabe von jsonService
-      },
     );
   }
 }
