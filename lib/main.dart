@@ -41,7 +41,7 @@ class _MyAppState extends State<MyApp> {
   void _updateTheme(ThemeMode mode) {
     // Nur setState aufrufen, ConfigManager wird in den Settings gespeichert
     if (_themeMode != mode) {
-      // ✅ Wichtige Änderung: Nur bei Änderung aktualisieren
+      // Wichtige Änderung: Nur bei Änderung aktualisieren
       setState(() {
         _themeMode = mode;
       });
@@ -57,10 +57,10 @@ class _MyAppState extends State<MyApp> {
       themeMode: _themeMode,
       home: MainScreen(
         jsonService: widget.jsonService,
-        onThemeChanged: _updateTheme, // ✅ Callback für Theme-Änderungen
+        onThemeChanged: _updateTheme, // Callback für Theme-Änderungen
       ),
       routes: {
-        // ✅ Named-Route für Einstellungen
+        // Named-Route für Einstellungen
         '/settings': (context) => SettingsScreen(
               jsonService: widget.jsonService,
               onThemeChanged: _updateTheme,

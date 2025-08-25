@@ -2,11 +2,11 @@
 
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/services/config_manager.dart';
 import 'package:music_up/services/discogs_oauth_service.dart';
+import 'package:music_up/services/logger_service.dart';
 
 class DiscogsServiceUnified {
   final ConfigManager _configManager;
@@ -30,7 +30,7 @@ class DiscogsServiceUnified {
   Map<String, String> _createOAuthHeaders(String method, String url) {
     // FIXED: Immer OAuth-Service neu initialisieren um Token-Updates zu berücksichtigen
     _initializeOAuth();
-    
+
     if (_oauthService == null || !_oauthService!.isAuthenticated) {
       throw Exception('OAuth nicht verfügbar oder nicht authentifiziert');
     }
@@ -49,11 +49,6 @@ class DiscogsServiceUnified {
     final key = creds['consumer_key'] ?? '';
     final secret = creds['consumer_secret'] ?? '';
 
-    if (kDebugMode) {
-      debugPrint('🔐 OAuth Init - Consumer Key: ${key.isNotEmpty ? "***SET***" : "EMPTY"}');
-      debugPrint('🔐 OAuth Init - Consumer Secret: ${secret.isNotEmpty ? "***SET***" : "EMPTY"}');
-    }
-
     if (key.isNotEmpty && secret.isNotEmpty) {
       // FIXED: Immer neuen Service erstellen oder existierenden aktualisieren
       _oauthService = DiscogsOAuthService(
@@ -63,22 +58,22 @@ class DiscogsServiceUnified {
 
       final token = tokens['token'];
       final tokenSecret = tokens['secret'];
-      
-      if (kDebugMode) {
-        debugPrint('🔐 OAuth Init - Access Token: ${token != null && token.isNotEmpty ? "***SET***" : "EMPTY"}');
-        debugPrint('🔐 OAuth Init - Access Secret: ${tokenSecret != null && tokenSecret.isNotEmpty ? "***SET***" : "EMPTY"}');
-      }
-      
-      if (token != null && tokenSecret != null && token.isNotEmpty && tokenSecret.isNotEmpty) {
+
+      if (token != null &&
+          tokenSecret != null &&
+          token.isNotEmpty &&
+          tokenSecret.isNotEmpty) {
         _oauthService!.setAccessToken(token, tokenSecret);
-        if (kDebugMode) debugPrint('🔐 OAuth service initialized and authenticated');
+        LoggerService.oauth('Service initialized and authenticated');
       } else {
-        if (kDebugMode) debugPrint('🔐 OAuth service created but no access tokens found');
+        LoggerService.warning(
+            'OAuth Init', 'Service created but no access tokens found');
       }
     } else {
       // FIXED: Service auf null setzen wenn Credentials fehlen
       _oauthService = null;
-      if (kDebugMode) debugPrint('🔐 OAuth service set to null - missing consumer credentials');
+      LoggerService.warning(
+          'OAuth Init', 'Service set to null - missing consumer credentials');
     }
   }
 
@@ -88,10 +83,10 @@ class DiscogsServiceUnified {
       final url = '$_baseUrl/oauth/identity';
       final response = await http.get(Uri.parse(url),
           headers: _createOAuthHeaders('GET', url));
-      if (kDebugMode) debugPrint('🔑 OAuth test: ${response.statusCode}');
+      LoggerService.api('oauth/identity', response.statusCode);
       return response.statusCode == 200;
     } catch (e) {
-      if (kDebugMode) debugPrint('🔑 OAuth test failed: $e');
+      LoggerService.error('OAuth test', e);
       return false;
     }
   }
@@ -106,7 +101,6 @@ class DiscogsServiceUnified {
       final urlBase = '$_baseUrl/users/$username/wants';
 
       final firstUrl = '$urlBase?per_page=100&page=1';
-      if (kDebugMode) debugPrint('📋 Loading wantlist from: $firstUrl');
 
       final firstResp = await http.get(Uri.parse(firstUrl),
           headers: _createHeaders('GET', firstUrl));
@@ -124,8 +118,6 @@ class DiscogsServiceUnified {
 
       for (int page = 2; page <= totalPages; page++) {
         final pageUrl = '$urlBase?per_page=100&page=$page';
-        if (kDebugMode)
-          debugPrint('📋 Loading wantlist page $page/$totalPages: $pageUrl');
         final pageResp = await http.get(Uri.parse(pageUrl),
             headers: _createHeaders('GET', pageUrl));
         if (pageResp.statusCode != 200) {
@@ -136,9 +128,7 @@ class DiscogsServiceUnified {
         allWants.addAll(pageData['wants'] as List? ?? const []);
       }
 
-      if (kDebugMode) {
-        debugPrint('📋 Found ${allWants.length} wantlist items (aggregated)');
-      }
+      LoggerService.data('Wantlist loaded', allWants.length, 'items');
 
       return allWants.map((want) {
         final Map basicInfo = (want is Map && want['basic_information'] is Map)
@@ -174,7 +164,7 @@ class DiscogsServiceUnified {
         );
       }).toList();
     } catch (e) {
-      if (kDebugMode) debugPrint('📋 Wantlist error: $e');
+      LoggerService.error('Wantlist load', e);
       rethrow;
     }
   }
@@ -186,8 +176,6 @@ class DiscogsServiceUnified {
     try {
       final username = await _getOAuthUsername();
       final url = '$_baseUrl/users/$username/wants/$releaseId';
-
-      if (kDebugMode) debugPrint('❤️ Adding to wantlist: $releaseId');
 
       final response = await http.put(
         Uri.parse(url),
@@ -206,9 +194,9 @@ class DiscogsServiceUnified {
             'Hinzufügen fehlgeschlagen: ${response.statusCode} - ${response.body}');
       }
 
-      if (kDebugMode) debugPrint('❤️ Successfully added to wantlist');
+      LoggerService.success('Added to Discogs wantlist', releaseId);
     } catch (e) {
-      if (kDebugMode) debugPrint('❤️ Add to wantlist error: $e');
+      LoggerService.error('Add to wantlist', e, releaseId);
       rethrow;
     }
   }
@@ -221,8 +209,6 @@ class DiscogsServiceUnified {
       final username = await _getOAuthUsername();
       final url = '$_baseUrl/users/$username/wants/$releaseId';
 
-      if (kDebugMode) debugPrint('💔 Removing from wantlist: $releaseId');
-
       final response = await http.delete(Uri.parse(url),
           headers: _createHeaders('DELETE', url));
 
@@ -233,9 +219,9 @@ class DiscogsServiceUnified {
             'Entfernen fehlgeschlagen: ${response.statusCode} - ${response.body}');
       }
 
-      if (kDebugMode) debugPrint('💔 Successfully removed from wantlist');
+      LoggerService.success('Removed from Discogs wantlist', releaseId);
     } catch (e) {
-      if (kDebugMode) debugPrint('💔 Remove from wantlist error: $e');
+      LoggerService.error('Remove from wantlist', e, releaseId);
       rethrow;
     }
   }
@@ -249,8 +235,6 @@ class DiscogsServiceUnified {
       final url =
           '$_baseUrl/database/search?q=${Uri.encodeComponent(query)}&type=release';
 
-      if (kDebugMode) debugPrint('🔍 Searching: $query');
-
       final response =
           await http.get(Uri.parse(url), headers: _createHeaders('GET', url));
 
@@ -262,11 +246,11 @@ class DiscogsServiceUnified {
       final data = json.decode(response.body);
       final List results = data['results'] ?? [];
 
-      if (kDebugMode) debugPrint('🔍 Found ${results.length} search results');
+      LoggerService.data('Search results', results.length, 'releases');
 
       return results.cast<Map<String, dynamic>>();
     } catch (e) {
-      if (kDebugMode) debugPrint('🔍 Search error: $e');
+      LoggerService.error('Release search', e, query);
       rethrow;
     }
   }
@@ -277,15 +261,11 @@ class DiscogsServiceUnified {
     try {
       final url = '$_baseUrl/releases/$releaseId';
 
-      if (kDebugMode) debugPrint('🎵 Loading tracks for: $releaseId');
-
       final response =
           await http.get(Uri.parse(url), headers: _createHeaders('GET', url));
 
       if (response.statusCode != 200) {
-        if (kDebugMode) {
-          debugPrint('🎵 Tracks load failed: ${response.statusCode}');
-        }
+        LoggerService.api('releases/$releaseId', response.statusCode);
         return [];
       }
 
@@ -293,7 +273,6 @@ class DiscogsServiceUnified {
       final List? tracklist = data['tracklist'];
 
       if (tracklist == null || tracklist.isEmpty) {
-        if (kDebugMode) debugPrint('🎵 No tracks found');
         return [];
       }
 
@@ -309,10 +288,10 @@ class DiscogsServiceUnified {
         ));
       }
 
-      if (kDebugMode) debugPrint('🎵 Loaded ${tracks.length} tracks');
+      LoggerService.data('Tracks loaded', tracks.length, 'for release');
       return tracks;
     } catch (e) {
-      if (kDebugMode) debugPrint('🎵 Tracks error: $e');
+      LoggerService.error('Track loading', e, releaseId);
       return [];
     }
   }
@@ -360,11 +339,11 @@ class DiscogsServiceUnified {
 
   String get statusMessage {
     if (hasWriteAccess) {
-      return '✅ Vollzugriff (OAuth)';
+      return 'Vollzugriff (OAuth)';
     } else if (hasAuth) {
-      return '✅ OAuth vorhanden';
+      return 'OAuth vorhanden';
     } else {
-      return '❌ Kein Zugriff';
+      return 'Kein Zugriff';
     }
   }
 }

@@ -1,14 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           package="de.posteo.nobo_code.music_up"
-          android:versionCode="5"
-          android:versionName="1.3.1">
+          android:versionCode="6"
+          android:versionName="1.3.2">
 
     <uses-sdk
             android:minSdkVersion="21"
             android:targetSdkVersion="34"/>
 
     <application
-            android:label="music_up"
+            android:label="MusicUp"
             android:name="${applicationName}"
             android:icon="@mipmap/ic_launcher"
             android:enableOnBackInvokedCallback="true">

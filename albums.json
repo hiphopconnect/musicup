@@ -53187,5 +53187,24 @@
         "title": "Seen Interview"
       }
     ]
+  },
+  {
+    "id": "06f16e06-a297-4a0d-b318-546162a34269",
+    "name": "Test",
+    "artist": "Test",
+    "genre": "Test",
+    "year": "2025",
+    "medium": "Vinyl",
+    "digital": true,
+    "tracks": [
+      {
+        "trackNumber": "01",
+        "title": "dddd"
+      },
+      {
+        "trackNumber": "02",
+        "title": "dddd"
+      }
+    ]
   }
 ]

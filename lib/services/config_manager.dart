@@ -11,7 +11,7 @@ class ConfigManager {
   String? _jsonFilePath;
   String? _wantlistFilePath;
   String? _discogsToken;
-  ThemeMode? _themeMode; // ✅ NEU
+  ThemeMode? _themeMode; // NEU
 
   Future<void> loadConfig() async {
     _prefs = await SharedPreferences.getInstance();
@@ -33,7 +33,7 @@ class ConfigManager {
     // Lade Discogs Token
     _discogsToken = _prefs.getString('discogs_token');
 
-    // ✅ Theme Mode laden
+    // Theme Mode laden
     String? themeModeString = _prefs.getString('theme_mode');
     _themeMode = _parseThemeMode(themeModeString);
   }
@@ -74,7 +74,7 @@ class ConfigManager {
     await _prefs.setString('discogs_token', token);
   }
 
-  // ✅ THEME MODE METHODS
+  // THEME MODE METHODS
   ThemeMode getThemeMode() => _themeMode ?? ThemeMode.system;
 
   Future<void> setThemeMode(ThemeMode mode) async {

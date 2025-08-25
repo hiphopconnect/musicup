@@ -42,15 +42,22 @@ dev_dependencies:
   flutter_lints: ^5.0.0       # Stabil
   flutter_launcher_icons: ^0.13.1
 
-flutter_icons:
+flutter_launcher_icons:
   android: true
-  ios: false # Da Sie nur Android anpassen möchten
-  image_path: "assets/icons/music_up_icon.png" # Pfad zu Ihrem Icon (512x512 empfohlen)
-  adaptive_icon_background: "#ffffff" # Hintergrundfarbe für adaptive Icons
-  adaptive_icon_foreground: "assets/icons/music_up_icon.png" # Vordergrund für adaptive Icons
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  adaptive_icon_background: "#2E4F2E" # Dunkelgrün wie das Logo
+  adaptive_icon_foreground: "assets/icons/app_icon.png"
+  web:
+    generate: true
+    image_path: "assets/icons/app_icon.png"
+  macos:
+    generate: true
+    image_path: "assets/icons/app_icon.png"
 
 
 flutter:
   uses-material-design: true
   assets:
     - assets/icons/music_up_icon.png
+    - assets/icons/app_icon.png

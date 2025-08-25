@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const _seed = Color(0xFF1976D2); // Angelehnt an euer Blau
+  // Monochrome/Green Theme Colors
+  static const Color darkGreen = Color(0xFF2E4F2E);
+  static const Color oliveGreen = Color(0xFF556B2F);
+  static const Color charcoal = Color(0xFF2C2C2C);
+  static const Color lightGrey = Color(0xFFF5F5F5);
+  
+  static const _seed = darkGreen;
 
   static ThemeData get light {
     final base = ThemeData(

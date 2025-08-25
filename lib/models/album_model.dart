@@ -149,3 +149,65 @@ class Track {
     return getNumericSortOrder().compareTo(other.getNumericSortOrder());
   }
 }
+
+class DiscogsSearchResult {
+  final String id;
+  final String title;
+  final String artist;
+  final String genre;
+  final String year;
+  final String format;
+  final String imageUrl;
+
+  DiscogsSearchResult({
+    required this.id,
+    required this.title,
+    required this.artist,
+    required this.genre,
+    required this.year,
+    required this.format,
+    required this.imageUrl,
+  });
+
+  factory DiscogsSearchResult.fromJson(Map<String, dynamic> json) {
+    String title = json['title']?.toString() ?? 'Unknown Title';
+    String artist = 'Unknown Artist';
+
+    // Extract artist from title if format is "Artist - Title"
+    if (title.contains(' - ')) {
+      final parts = title.split(' - ');
+      if (parts.length >= 2) {
+        artist = parts[0].trim();
+        title = parts.sublist(1).join(' - ').trim();
+      }
+    }
+
+    // Override with explicit artist field if available
+    if (json['artist'] != null && json['artist'].toString().isNotEmpty) {
+      artist = json['artist'].toString();
+    }
+
+    // Fallback: try to extract from title again if still "Unknown Artist"
+    if (artist == 'Unknown Artist' && title.contains(' - ')) {
+      final parts = title.split(' - ');
+      if (parts.length >= 2) {
+        artist = parts[0].trim();
+        title = parts.sublist(1).join(' - ').trim();
+      }
+    }
+
+    return DiscogsSearchResult(
+      id: json['id']?.toString() ?? '',
+      title: title,
+      artist: artist,
+      genre: (json['genre'] is List && json['genre'].isNotEmpty)
+          ? json['genre'][0].toString()
+          : json['genre']?.toString() ?? '',
+      year: json['year']?.toString() ?? '',
+      format: (json['format'] is List && json['format'].isNotEmpty)
+          ? json['format'][0].toString()
+          : json['format']?.toString() ?? 'Unknown',
+      imageUrl: json['thumb']?.toString() ?? '',
+    );
+  }
+}

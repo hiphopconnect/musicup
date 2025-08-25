@@ -4,8 +4,8 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:music_up/services/logger_service.dart';
 
 class DiscogsOAuthService {
   // RUNTIME-KONFIGURIERBAR (statt statisch)
@@ -50,7 +50,6 @@ class DiscogsOAuthService {
 
     final authHeader = _buildAuthorizationHeader(parameters);
 
-    if (kDebugMode) debugPrint('🔐 Requesting OAuth token...');
 
     final response = await http.post(
       Uri.parse('$_baseUrl/oauth/request_token'),
@@ -61,9 +60,6 @@ class DiscogsOAuthService {
       },
     );
 
-    if (kDebugMode)
-      debugPrint('🔐 Request token response: ${response.statusCode}');
-    if (kDebugMode) debugPrint('🔐 Request token body: ${response.body}');
 
     if (response.statusCode == 200) {
       final params = Uri.splitQueryString(response.body);
@@ -78,9 +74,10 @@ class DiscogsOAuthService {
       final authUrl =
           'https://www.discogs.com/de/oauth/authorize?oauth_token=$_requestToken';
 
-      if (kDebugMode) debugPrint('🔐 Authorization URL: $authUrl');
+      LoggerService.oauth('Request token obtained');
       return authUrl;
     } else {
+      LoggerService.api('oauth/request_token', response.statusCode, response.body);
       throw Exception(
           'Request Token Fehler: ${response.statusCode} - ${response.body}');
     }
@@ -90,11 +87,7 @@ class DiscogsOAuthService {
   Map<String, String> createOAuthHeaders(String method, String url,
       {Map<String, String>? additionalParams}) {
     if (_accessToken == null || _accessTokenSecret == null) {
-      if (kDebugMode) {
-        debugPrint('🔐 ERROR: Access Token fehlt!');
-        debugPrint('🔐 Access Token: ${_accessToken != null ? "***SET***" : "NULL"}');
-        debugPrint('🔐 Access Secret: ${_accessTokenSecret != null ? "***SET***" : "NULL"}');
-      }
+      LoggerService.error('OAuth Headers', 'Access token missing');
       throw Exception(
           'Access Token fehlt. Führen Sie zuerst die OAuth-Authentifizierung durch.');
     }
@@ -106,13 +99,6 @@ class DiscogsOAuthService {
     final uri = Uri.parse(url);
     final baseUrl = uri.replace(query: '').toString().replaceAll('?', '');
 
-    if (kDebugMode) {
-      debugPrint('🔐 Creating OAuth headers for: $method $url');
-      debugPrint('🔐 Base URL (for signature): $baseUrl');
-      debugPrint('🔐 Query Parameters: ${uri.queryParameters}');
-      debugPrint('🔐 Consumer Key: ${consumerKey.isNotEmpty ? "***SET***" : "EMPTY"}');
-      debugPrint('🔐 Access Token: ${_accessToken!.isNotEmpty ? "***SET***" : "EMPTY"}');
-    }
 
     final parameters = {
       'oauth_consumer_key': consumerKey,
@@ -127,11 +113,9 @@ class DiscogsOAuthService {
     final allParams = Map<String, String>.from(parameters);
     if (uri.queryParameters.isNotEmpty) {
       allParams.addAll(uri.queryParameters);
-      if (kDebugMode) debugPrint('🔐 Added ${uri.queryParameters.length} query params to signature');
     }
     if (additionalParams != null) {
       allParams.addAll(additionalParams);
-      if (kDebugMode) debugPrint('🔐 Added ${additionalParams.length} additional params to signature');
     }
 
     final signature = _generateSignature(
@@ -145,10 +129,6 @@ class DiscogsOAuthService {
 
     final authHeader = _buildAuthorizationHeader(parameters);
 
-    if (kDebugMode) {
-      debugPrint('🔐 Generated signature successfully');
-      debugPrint('🔐 OAuth Authorization header created');
-    }
 
     return {
       'Authorization': authHeader,
@@ -192,14 +172,6 @@ class DiscogsOAuthService {
     final signingKey =
         '${Uri.encodeComponent(consumerSecret)}&${Uri.encodeComponent(tokenSecret)}';
 
-    if (kDebugMode) {
-      debugPrint('🔐 Signature Debug:');
-      debugPrint('🔐   Method: ${method.toUpperCase()}');
-      debugPrint('🔐   URL: $url');
-      debugPrint('🔐   Param String: $paramString');
-      debugPrint('🔐   Signature Base: $signatureBaseString');
-      debugPrint('🔐   Signing Key Length: ${signingKey.length}');
-    }
 
     // HMAC-SHA1 Signature berechnen
     final hmac = Hmac(sha1, utf8.encode(signingKey));
@@ -207,9 +179,6 @@ class DiscogsOAuthService {
 
     final signature = base64.encode(digest.bytes);
     
-    if (kDebugMode) {
-      debugPrint('🔐   Generated Signature: $signature');
-    }
 
     return signature;
   }
@@ -274,7 +243,6 @@ class DiscogsOAuthService {
 
     final authHeader = _buildAuthorizationHeader(parameters);
 
-    if (kDebugMode) debugPrint('🔐 Requesting access token...');
 
     final response = await http.post(
       Uri.parse(url),
@@ -285,12 +253,9 @@ class DiscogsOAuthService {
       },
     );
 
-    if (kDebugMode) {
-      debugPrint('🔐 Access token response: ${response.statusCode}');
-      debugPrint('🔐 Access token body: ${response.body}');
-    }
 
     if (response.statusCode != 200) {
+      LoggerService.api('oauth/access_token', response.statusCode, response.body);
       throw Exception(
           'Access Token Fehler: ${response.statusCode} - ${response.body}');
     }
@@ -306,6 +271,7 @@ class DiscogsOAuthService {
     _accessToken = accessTok;
     _accessTokenSecret = accessSec;
 
+    LoggerService.oauth('Access token obtained');
     return {
       'oauth_token': accessTok,
       'oauth_token_secret': accessSec,

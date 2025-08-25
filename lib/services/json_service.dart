@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/services/config_manager.dart';
+import 'package:music_up/services/logger_service.dart';
 import 'package:path_provider/path_provider.dart';
 
 class JsonService {
@@ -12,7 +13,7 @@ class JsonService {
 
   JsonService(this.configManager);
 
-  // ✅ KORREKTUR: Verwende ConfigManager statt hardcodierte Pfade!
+  // KORREKTUR: Verwende ConfigManager statt hardcodierte Pfade!
   Future<String> _getAlbumsFilePath() async {
     String? configPath = configManager.getJsonFilePath();
 
@@ -23,13 +24,13 @@ class JsonService {
     // Fallback: Standard-Pfad wenn nicht konfiguriert
     if (Platform.isAndroid || Platform.isIOS) {
       final directory = await getApplicationDocumentsDirectory();
-      return '${directory.path}/albums.json'; // ✅ KORRIGIERT: albums.json statt music_up_albums.json
+      return '${directory.path}/albums.json'; // KORRIGIERT: albums.json statt music_up_albums.json
     } else {
       return 'albums.json'; // Desktop Fallback
     }
   }
 
-  // ✅ KORREKTUR: Verwende ConfigManager für Wantlist!
+  // KORREKTUR: Verwende ConfigManager für Wantlist!
   Future<String> _getWantlistFilePath() async {
     return await configManager.getWantlistFilePathOrDefault();
   }
@@ -38,22 +39,19 @@ class JsonService {
   Future<List<Album>> loadAlbums() async {
     try {
       final filePath = await _getAlbumsFilePath();
-      print('🔍 DEBUG: Loading albums from: "$filePath"'); // ✅ DEBUG
 
       final file = File(filePath);
 
       if (await file.exists()) {
         final contents = await file.readAsString();
-        print('🔍 DEBUG: File content length: ${contents.length}'); // ✅ DEBUG
 
         if (contents.trim().isEmpty) {
-          print('⚠️ WARNING: Albums file is empty');
+          LoggerService.warning('Albums load', 'File is empty');
           return [];
         }
 
         final List<dynamic> jsonList = json.decode(contents);
-        print(
-            '✅ SUCCESS: Parsed ${jsonList.length} albums from JSON'); // ✅ DEBUG
+        LoggerService.data('Albums loaded', jsonList.length, 'items');
 
         return jsonList.map((albumMap) {
           final Map<String, dynamic> albumJson =
@@ -86,17 +84,16 @@ class JsonService {
           );
         }).toList();
       } else {
-        print('⚠️ WARNING: Albums file does not exist: "$filePath"');
+        LoggerService.info('Albums load', 'File does not exist, creating empty file');
 
-        // ✅ Erstelle leere Datei automatisch (schön formatiert)
+        // Erstelle leere Datei automatisch (schön formatiert)
         await file.create(recursive: true);
         await file.writeAsString('[\n]\n');
-        print('📁 Created empty albums file');
 
         return [];
       }
     } catch (e) {
-      print('❌ ERROR loading albums: $e');
+      LoggerService.error('Albums load', e);
       return [];
     }
   }
@@ -105,12 +102,10 @@ class JsonService {
   Future<void> saveAlbums(List<Album> albums) async {
     try {
       final filePath = await _getAlbumsFilePath();
-      print(
-          '🔍 DEBUG: Saving ${albums.length} albums to: "$filePath"'); // ✅ DEBUG
 
       final file = File(filePath);
 
-      // ✅ Erstelle Directory falls nötig
+      // Erstelle Directory falls nötig
       await file.parent.create(recursive: true);
 
       final List<Map<String, dynamic>> jsonList = albums.map((album) {
@@ -131,12 +126,12 @@ class JsonService {
         };
       }).toList();
 
-      // ✅ Schön formatiert speichern
+      // Schön formatiert speichern
       const encoder = JsonEncoder.withIndent('  ');
       await file.writeAsString('${encoder.convert(jsonList)}\n');
-      print('✅ SUCCESS: Saved albums to file'); // ✅ DEBUG
+      LoggerService.data('Albums saved', albums.length, 'items');
     } catch (e) {
-      print('❌ ERROR saving albums: $e');
+      LoggerService.error('Albums save', e);
       throw Exception('Failed to save albums: $e');
     }
   }
@@ -145,23 +140,19 @@ class JsonService {
   Future<List<Album>> loadWantlist() async {
     try {
       final filePath = await _getWantlistFilePath();
-      print('🔍 DEBUG: Loading wantlist from: "$filePath"'); // ✅ DEBUG
 
       final file = File(filePath);
 
       if (await file.exists()) {
         final contents = await file.readAsString();
-        print(
-            '🔍 DEBUG: Wantlist content length: ${contents.length}'); // ✅ DEBUG
 
         if (contents.trim().isEmpty) {
-          print('⚠️ WARNING: Wantlist file is empty');
+          LoggerService.warning('Wantlist load', 'File is empty');
           return [];
         }
 
         final List<dynamic> jsonList = json.decode(contents);
-        print(
-            '✅ SUCCESS: Parsed ${jsonList.length} wantlist items from JSON'); // ✅ DEBUG
+        LoggerService.data('Wantlist loaded', jsonList.length, 'items');
 
         return jsonList.map((albumMap) {
           final Map<String, dynamic> albumJson =
@@ -194,17 +185,16 @@ class JsonService {
           );
         }).toList();
       } else {
-        print('⚠️ WARNING: Wantlist file does not exist: "$filePath"');
+        LoggerService.info('Wantlist load', 'File does not exist, creating empty file');
 
-        // ✅ Erstelle leere Datei automatisch (schön formatiert)
+        // Erstelle leere Datei automatisch (schön formatiert)
         await file.create(recursive: true);
         await file.writeAsString('[\n]\n');
-        print('📁 Created empty wantlist file');
 
         return [];
       }
     } catch (e) {
-      print('❌ ERROR loading wantlist: $e');
+      LoggerService.error('Wantlist load', e);
       return [];
     }
   }
@@ -213,12 +203,10 @@ class JsonService {
   Future<void> saveWantlist(List<Album> wantlist) async {
     try {
       final filePath = await _getWantlistFilePath();
-      print(
-          '🔍 DEBUG: Saving ${wantlist.length} wantlist items to: "$filePath"'); // ✅ DEBUG
 
       final file = File(filePath);
 
-      // ✅ Erstelle Directory falls nötig
+      // Erstelle Directory falls nötig
       await file.parent.create(recursive: true);
 
       final List<Map<String, dynamic>> jsonList = wantlist.map((album) {
@@ -239,20 +227,19 @@ class JsonService {
         };
       }).toList();
 
-      // ✅ Schön formatiert speichern
+      // Schön formatiert speichern
       const encoder = JsonEncoder.withIndent('  ');
       await file.writeAsString('${encoder.convert(jsonList)}\n');
-      print('✅ SUCCESS: Saved wantlist to file'); // ✅ DEBUG
+      LoggerService.data('Wantlist saved', wantlist.length, 'items');
     } catch (e) {
-      print('❌ ERROR saving wantlist: $e');
+      LoggerService.error('Wantlist save', e);
       throw Exception('Failed to save wantlist: $e');
     }
   }
 
-  // ✅ BONUS: Import-Funktion für externe JSON-Dateien
+  // BONUS: Import-Funktion für externe JSON-Dateien
   Future<List<Album>> importAlbumsFromFile(String importFilePath) async {
     try {
-      print('🔍 DEBUG: Importing albums from: "$importFilePath"');
 
       final file = File(importFilePath);
       if (!await file.exists()) {
@@ -293,7 +280,7 @@ class JsonService {
         );
       }).toList();
 
-      print('✅ SUCCESS: Imported ${importedAlbums.length} albums');
+      LoggerService.data('Albums imported', importedAlbums.length, 'items');
 
       // Merge with existing albums and save
       List<Album> existingAlbums = await loadAlbums();
@@ -304,7 +291,7 @@ class JsonService {
 
       return importedAlbums;
     } catch (e) {
-      print('❌ ERROR importing albums: $e');
+      LoggerService.error('Albums import', e);
       throw Exception('Failed to import albums: $e');
     }
   }

@@ -25,11 +25,11 @@ class AppLayout extends StatelessWidget {
         actions: actions,
       ),
       body: SafeArea(
-        // ✅ SafeArea für besseren Layout-Schutz
+        // SafeArea für besseren Layout-Schutz
         child: body,
       ),
       floatingActionButton: floatingActionButton,
-      resizeToAvoidBottomInset: true, // ✅ Keyboard-Handling
+      resizeToAvoidBottomInset: true, // Keyboard-Handling
     );
   }
 }
