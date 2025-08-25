@@ -1,14 +1,14 @@
-// lib/screens/wantlist_screen.dart
-
-import 'dart:convert';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/screens/add_wanted_album_screen.dart';
 import 'package:music_up/services/config_manager.dart';
-import 'package:music_up/services/discogs_service.dart';
+import 'package:music_up/services/discogs_service_unified.dart';
 import 'package:music_up/services/json_service.dart';
+import 'package:music_up/widgets/app_layout.dart';
+import 'package:music_up/widgets/search_bar_widget.dart';
+import 'package:music_up/widgets/section_card.dart';
+import 'package:music_up/widgets/status_banner.dart';
 
 class WantlistScreen extends StatefulWidget {
   final ConfigManager configManager;
@@ -23,8 +23,8 @@ class WantlistScreenState extends State<WantlistScreen> {
   List<Album> _wantedAlbums = [];
   List<Album> _filteredWantlistAlbums = [];
   bool _isLoading = true;
-  bool _hasDiscogsToken = false;
-  DiscogsService? _discogsService;
+  bool _hasDiscogsAuth = false;
+  DiscogsServiceUnified? _discogsService;
   late JsonService _jsonService;
   final TextEditingController _searchController = TextEditingController();
 
@@ -37,216 +37,157 @@ class WantlistScreenState extends State<WantlistScreen> {
     _loadWantlist();
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _initializeService() {
-    _hasDiscogsToken = widget.configManager.hasDiscogsToken();
-
-    if (_hasDiscogsToken) {
-      String token = widget.configManager.getDiscogsToken();
-      _discogsService = DiscogsService(token);
-    }
-  }
-
-  // ✅ DEBUG TOKEN COMPARISON FUNCTION
-  Future<void> _debugCompareTokens() async {
-    print('🔍 ====== TOKEN COMPARISON DEBUG ====== 🔍');
-
-    // 1. Check welcher Token in der App verwendet wird
-    String appToken = widget.configManager.getDiscogsToken();
-    print('🔍 APP TOKEN: ${appToken.substring(0, 10)}...');
-    print('🔍 APP TOKEN FULL: $appToken');
-
-    // 2. Teste verschiedene URLs direkt
-    final urls = [
-      'https://api.discogs.com/oauth/identity',
-      'https://api.discogs.com/users/me/wants',
-      'https://api.discogs.com/users/me/wants?page=1&per_page=100',
-      'https://api.discogs.com/users/hiphopconnected/wants?page=1&per_page=100',
-    ];
-
-    for (String url in urls) {
-      try {
-        print('🔍 TESTING: $url');
-
-        final response = await http.get(
-          Uri.parse(url),
-          headers: {
-            'Authorization': 'Discogs token=$appToken',
-            'User-Agent':
-                'MusicUp/1.3.1 +https://github.com/hiphopconnect/musicup',
-          },
-        );
-
-        print('✅ STATUS: ${response.statusCode}');
-
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-
-          if (data.containsKey('wants')) {
-            final wants = data['wants'] ?? [];
-            print('🎯 FOUND ${wants.length} WANTS!');
-            if (wants.isNotEmpty) {
-              print(
-                  '🎵 FIRST WANT: ${wants[0]['basic_information']?['title']}');
-            }
-          } else if (data.containsKey('username')) {
-            print('👤 USER: ${data['username']}');
-          }
-        } else {
-          print('❌ ERROR BODY: ${response.body}');
-        }
-      } catch (e) {
-        print('❌ EXCEPTION: $e');
-      }
-
-      await Future.delayed(const Duration(seconds: 1)); // Rate limit
-    }
-
-    print('🔍 ====== TOKEN COMPARISON END ====== 🔍');
-  }
-
-  // ✅ Load-Funktion MIT DEBUG für Discogs
-  Future<void> _loadWantlist() async {
-    setState(() => _isLoading = true);
-
-    try {
-      List<Album> albums = [];
-
-      // 1. Lade offline Wantlist ZUERST
-      List<Album> offlineWantlist = await _jsonService.loadWantlist();
-
-      // 2. Lade Discogs Wantlist wenn Token verfügbar
-      if (_hasDiscogsToken && _discogsService != null) {
-        try {
-          // ✅ TESTE TOKEN ZUERST
-          print('🔍 DEBUG: Testing Discogs token...');
-          bool tokenValid = await _discogsService!.testToken();
-          print('🔍 DEBUG: Token valid: $tokenValid');
-
-          if (!tokenValid) {
-            throw Exception(
-                'Invalid Discogs token. Please check token in Settings.');
-          }
-
-          // ✅ LADE USER INFO
-          var userInfo = await _discogsService!.getUserInfo();
-          print('🔍 DEBUG: User info: ${userInfo?['username']}');
-
-          print('🔍 DEBUG: Loading Discogs wantlist...');
-          List<Album> discogsWantlist =
-              await _discogsService!.getWantlistAsAlbums();
-          print(
-              '✅ SUCCESS: Loaded ${discogsWantlist.length} Discogs wantlist items');
-
-          // 3. Merge Lists und entferne Duplikate
-          Map<String, Album> albumMap = {};
-
-          // Erst offline Items hinzufügen
-          for (Album album in offlineWantlist) {
-            String key =
-                '${album.artist.toLowerCase()}_${album.name.toLowerCase()}';
-            albumMap[key] = album;
-          }
-
-          // Dann Discogs Items hinzufügen/überschreiben
-          for (Album album in discogsWantlist) {
-            String key =
-                '${album.artist.toLowerCase()}_${album.name.toLowerCase()}';
-            albumMap[key] = album; // Discogs-Daten haben Vorrang
-          }
-
-          albums = albumMap.values.toList();
-
-          // 4. Speichere merged Wantlist offline
-          await _jsonService.saveWantlist(albums);
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                    '✅ Loaded ${discogsWantlist.length} items from Discogs + ${offlineWantlist.length} offline items'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          }
-        } catch (e) {
-          print('❌ ERROR loading Discogs wantlist: $e');
-
-          // Bei Discogs-Fehler: Verwende nur offline Wantlist
-          albums = offlineWantlist;
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                    '⚠️ Discogs error: $e\nUsing offline wantlist (${albums.length} items)'),
-                backgroundColor: Colors.orange,
-                duration: const Duration(seconds: 5),
-              ),
-            );
-          }
-        }
-      } else {
-        // 5. Kein Token: Verwende nur offline Wantlist
-        albums = offlineWantlist;
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  'ℹ️ Configure Discogs token in Settings to sync online wantlist\nShowing ${albums.length} offline items'),
-              backgroundColor: Colors.blue,
-            ),
-          );
-        }
-      }
-
-      // 6. Update UI
-      if (mounted) {
-        setState(() {
-          _wantedAlbums = albums;
-          _filteredWantlistAlbums = albums;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      print('❌ ERROR in _loadWantlist: $e');
-
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error loading wantlist: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  // Filter-Funktion für Wantlist-Suche
+  // Suchfilter für die Wunschliste (Listener in initState)
   void _filterWantlist() {
-    String query = _searchController.text.toLowerCase();
-
+    final q = _searchController.text.toLowerCase();
     setState(() {
-      _filteredWantlistAlbums = _wantedAlbums.where((album) {
-        return album.name.toLowerCase().contains(query) ||
-            album.artist.toLowerCase().contains(query);
+      _filteredWantlistAlbums = _wantedAlbums.where((a) {
+        return a.name.toLowerCase().contains(q) ||
+            a.artist.toLowerCase().contains(q);
       }).toList();
     });
   }
 
-  // Refresh-Funktion
+  void _initializeService() {
+    // Verwende DiscogsServiceUnified
+    _discogsService = DiscogsServiceUnified(widget.configManager);
+    _hasDiscogsAuth = _discogsService!.hasAuth;
+    if (kDebugMode) {
+      debugPrint('🔐 Wantlist init: hasAuth=${_discogsService!.hasAuth}');
+    }
+  }
+
+  // Pull-to-refresh bzw. AppBar-Refresh nutzt diese Methode
   Future<void> _refreshWantlist() async {
     await _loadWantlist();
   }
 
-  // Show confirmation dialog for adding wantlist item to collection
+  Future<void> _loadWantlist() async {
+    setState(() => _isLoading = true);
+    try {
+      final offline = await _jsonService.loadWantlist();
+      List<Album> merged = List.of(offline);
+
+      // Online-Sync nur, wenn OAuth vorhanden UND testToken==200
+      if (_discogsService != null && _discogsService!.hasAuth) {
+        try {
+          final tokenValid = await _discogsService!.testAuthentication();
+          if (kDebugMode) debugPrint('🔐 Token validation: $tokenValid');
+
+          if (tokenValid) {
+            if (kDebugMode) debugPrint('🌐 Loading online wantlist...');
+            final online = await _discogsService!.getWantlist();
+            if (kDebugMode)
+              debugPrint('🌐 Online wantlist: ${online.length} items');
+
+            // NEU: Online = Source of Truth
+            merged = List.of(online);
+
+            // Nur bei tatsächlicher Änderung persistieren
+            bool listsEqualByIds(List<Album> a, List<Album> b) {
+              if (a.length != b.length) return false;
+              final sa = a.map((x) => x.id).toSet();
+              final sb = b.map((x) => x.id).toSet();
+              return sa.containsAll(sb) && sb.containsAll(sa);
+            }
+
+            if (!listsEqualByIds(offline, merged)) {
+              if (kDebugMode) {
+                final offIds = offline.map((e) => e.id).toSet();
+                final onIds = merged.map((e) => e.id).toSet();
+                debugPrint('🌐 Differences -> toSave: ${merged.length}; '
+                    'removed locally: ${offIds.difference(onIds).length}; '
+                    'added locally: ${onIds.difference(offIds).length}');
+              }
+              await _jsonService.saveWantlist(merged);
+            } else {
+              if (kDebugMode) debugPrint('🌐 No changes to save');
+            }
+          } else {
+            if (kDebugMode) debugPrint('🌐 Auth invalid -> offline only');
+          }
+        } catch (e) {
+          if (kDebugMode) debugPrint('🌐 Online merge error: $e');
+          // Continue with offline data on error
+        }
+      } else {
+        if (kDebugMode) debugPrint('🌐 No service available');
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _wantedAlbums = merged;
+        _filteredWantlistAlbums = merged;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (kDebugMode) debugPrint('📋 Load wantlist error: $e');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Fehler beim Laden der Wunschliste: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  String? _extractReleaseId(Album a) {
+    const prefix = 'want_rel_';
+    if (a.id.startsWith(prefix)) {
+      return a.id.substring(prefix.length);
+    }
+    return null;
+  }
+
+  // Tracks nur bei Bedarf laden; nicht persistieren (Songs sind "nicht so wichtig")
+  Future<List<Track>> _ensureTracksLoaded(Album album) async {
+    if (album.tracks.isNotEmpty) return album.tracks;
+    if (!_hasDiscogsAuth || _discogsService == null) return album.tracks;
+
+    final releaseId = _extractReleaseId(album);
+    if (releaseId == null || releaseId.isEmpty) return album.tracks;
+
+    // Ladeindikator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final tracks = await _discogsService!.getReleaseTracklist(releaseId);
+      if (!mounted) return album.tracks;
+
+      setState(() {
+        final i = _wantedAlbums.indexWhere((a) => a.id == album.id);
+        if (i != -1) {
+          _wantedAlbums[i] = _wantedAlbums[i].copyWith(tracks: tracks);
+        }
+        final j = _filteredWantlistAlbums.indexWhere((a) => a.id == album.id);
+        if (j != -1) {
+          _filteredWantlistAlbums[j] =
+              _filteredWantlistAlbums[j].copyWith(tracks: tracks);
+        }
+      });
+
+      return tracks;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler beim Laden der Tracks: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return album.tracks;
+    } finally {
+      if (mounted) Navigator.of(context).pop();
+    }
+  }
+
   Future<void> _showAddToCollectionDialog(Album wantlistAlbum) async {
     String selectedMedium = 'Vinyl';
     bool isDigital = false;
@@ -257,57 +198,49 @@ class WantlistScreenState extends State<WantlistScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text('Add to Collection'),
+              title: const Text('Zur Sammlung hinzufügen'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                      'Adding: "${wantlistAlbum.name}" by ${wantlistAlbum.artist}'),
+                      'Hinzufügen: "${wantlistAlbum.name}" von ${wantlistAlbum.artist}'),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     value: selectedMedium,
                     decoration: const InputDecoration(
-                      labelText: 'Which format do you have?',
+                      labelText: 'Welches Medium hast du?',
                       border: OutlineInputBorder(),
                     ),
                     items: ['Vinyl', 'CD', 'Cassette', 'Digital']
-                        .map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        selectedMedium = newValue!;
-                      });
-                    },
+                        .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                        .toList(),
+                    onChanged: (v) =>
+                        setState(() => selectedMedium = v ?? 'Vinyl'),
                   ),
                   const SizedBox(height: 16),
                   SwitchListTile(
-                    title: const Text('Digital Available'),
-                    subtitle: const Text('Do you also have it digitally?'),
+                    title: const Text('Digital verfügbar'),
+                    subtitle: const Text('Besitzt du es zusätzlich digital?'),
                     value: isDigital,
-                    onChanged: (bool value) {
-                      setState(() {
-                        isDigital = value;
-                      });
-                    },
+                    onChanged: (v) => setState(() => isDigital = v),
                   ),
                 ],
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
+                  child: const Text('Abbrechen'),
                 ),
                 ElevatedButton(
                   onPressed: () async {
                     Navigator.of(dialogContext).pop();
                     await _addToCollectionAndRemoveFromWantlist(
-                        wantlistAlbum, selectedMedium, isDigital);
+                      wantlistAlbum,
+                      selectedMedium,
+                      isDigital,
+                    );
                   },
-                  child: const Text('Add to Collection'),
+                  child: const Text('Hinzufügen'),
                 ),
               ],
             );
@@ -317,12 +250,60 @@ class WantlistScreenState extends State<WantlistScreen> {
     );
   }
 
-  // Add to collection and remove from wantlist
   Future<void> _addToCollectionAndRemoveFromWantlist(
       Album wantlistAlbum, String medium, bool digital) async {
     try {
-      // Create new album for collection with user's format preferences
-      Album collectionAlbum = Album(
+      if (kDebugMode) debugPrint('🎵 Starting add to collection process...');
+      if (kDebugMode)
+        debugPrint(
+            '🎵 Album: ${wantlistAlbum.name} by ${wantlistAlbum.artist}');
+
+      // 1) Tracks für dieses Release sicherstellen (jetzt laden, falls leer)
+      List<Track> tracks =
+          List.from(wantlistAlbum.tracks); // WICHTIG: Kopie erstellen
+      final releaseId = _extractReleaseId(wantlistAlbum);
+
+      if (kDebugMode) debugPrint('🎵 Release ID: $releaseId');
+      if (kDebugMode) debugPrint('🎵 Current tracks count: ${tracks.length}');
+
+      // Tracks laden wenn leer und Release-ID vorhanden
+      if (tracks.isEmpty &&
+          _hasDiscogsAuth &&
+          _discogsService != null &&
+          releaseId != null &&
+          releaseId.isNotEmpty) {
+        try {
+          if (kDebugMode) debugPrint('🎵 Loading tracks from Discogs...');
+          tracks = await _discogsService!.getReleaseTracklist(releaseId);
+          if (kDebugMode)
+            debugPrint('🎵 Loaded ${tracks.length} tracks from Discogs');
+
+          // Debug: Track-Details ausgeben
+          for (int i = 0; i < tracks.length && i < 5; i++) {
+            if (kDebugMode)
+              debugPrint(
+                  '🎵 Track ${i + 1}: ${tracks[i].trackNumber} - ${tracks[i].title}');
+          }
+          if (tracks.length > 5) {
+            if (kDebugMode)
+              debugPrint('🎵 ... and ${tracks.length - 5} more tracks');
+          }
+        } catch (e) {
+          if (kDebugMode) debugPrint('🎵 Failed to load tracks: $e');
+          tracks = [];
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('⚠️ Konnte Tracks nicht laden: $e'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
+      }
+
+      // 2) Album mit den KORREKT GELADENEN Tracks in die lokale Sammlung eintragen
+      final collectionAlbum = Album(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         name: wantlistAlbum.name,
         artist: wantlistAlbum.artist,
@@ -330,76 +311,166 @@ class WantlistScreenState extends State<WantlistScreen> {
         year: wantlistAlbum.year,
         medium: medium,
         digital: digital,
-        tracks: wantlistAlbum.tracks,
+        tracks: tracks, // FIXED: Verwende die geladenen tracks!
       );
 
-      // 1. Add to collection
-      List<Album> currentCollection = await _jsonService.loadAlbums();
-      currentCollection.add(collectionAlbum);
-      await _jsonService.saveAlbums(currentCollection);
+      if (kDebugMode)
+        debugPrint(
+            '🎵 Saving album with ${collectionAlbum.tracks.length} tracks');
 
-      // 2. Remove from wantlist
-      setState(() {
-        _wantedAlbums.removeWhere((album) =>
-            album.name.toLowerCase() == wantlistAlbum.name.toLowerCase() &&
-            album.artist.toLowerCase() == wantlistAlbum.artist.toLowerCase());
-        _filteredWantlistAlbums = _wantedAlbums;
-      });
+      final current = await _jsonService.loadAlbums();
+      current.add(collectionAlbum);
+      await _jsonService.saveAlbums(current);
 
-      // 3. Save updated wantlist
-      await _jsonService.saveWantlist(_wantedAlbums);
+      if (kDebugMode) debugPrint('🎵 Album saved to collection');
 
-      // 4. Remove from Discogs wantlist (if connected)
-      if (_hasDiscogsToken && _discogsService != null) {
+      // 3) Bei Discogs aus Wantlist entfernen (falls möglich)
+      bool discogsRemovalSuccessful = false;
+      if (_hasDiscogsAuth &&
+          _discogsService != null &&
+          _discogsService!.hasWriteAccess &&
+          releaseId != null &&
+          releaseId.isNotEmpty) {
         try {
-          // TODO: Implement Discogs wantlist removal if API supports it
-          // await _discogsService!.removeFromWantlist(wantlistAlbum);
+          if (kDebugMode)
+            debugPrint(
+                '💔 Attempting to remove from Discogs wantlist: $releaseId');
+          await _discogsService!.removeFromWantlist(releaseId);
+          if (kDebugMode)
+            debugPrint('💔 Successfully removed from Discogs wantlist');
+          discogsRemovalSuccessful = true;
         } catch (e) {
-          // Silent error for Discogs removal
+          if (kDebugMode)
+            debugPrint('💔 Failed to remove from Discogs wantlist: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                    '⚠️ Konnte bei Discogs nicht entfernen: $e (lokal entfernt)'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
         }
+      } else {
+        if (kDebugMode)
+          debugPrint(
+              '💔 Cannot remove from Discogs: auth=${_hasDiscogsAuth}, service=${_discogsService != null}, writeAccess=${_discogsService?.hasWriteAccess}, releaseId=$releaseId');
       }
 
+      // 4) Lokal aus Wantlist entfernen und persistieren
+      setState(() {
+        _wantedAlbums.removeWhere((a) =>
+            a.name.toLowerCase() == wantlistAlbum.name.toLowerCase() &&
+            a.artist.toLowerCase() == wantlistAlbum.artist.toLowerCase());
+        _filteredWantlistAlbums = _wantedAlbums.where((a) {
+          final q = _searchController.text.toLowerCase();
+          return a.name.toLowerCase().contains(q) ||
+              a.artist.toLowerCase().contains(q);
+        }).toList();
+      });
+      await _jsonService.saveWantlist(_wantedAlbums);
+
+      if (kDebugMode) debugPrint('🎵 Removed from local wantlist');
+
       if (!mounted) return;
+
+      final trackInfo = tracks.isEmpty ? '' : ' (${tracks.length} Tracks)';
+      final discogsInfo =
+          discogsRemovalSuccessful ? ' und aus Discogs-Wantlist entfernt' : '';
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text('✅ "${wantlistAlbum.name}" added to collection as $medium'),
+          content: Text(
+              '✅ "${wantlistAlbum.name}" als $medium hinzugefügt$trackInfo$discogsInfo'),
           backgroundColor: Colors.green,
         ),
       );
+
+      // 5) Hauptliste informieren: Sammlung neu laden
+      if (kDebugMode) debugPrint('🎵 Returning to main screen...');
+      Navigator.of(context).pop(true);
     } catch (e) {
+      if (kDebugMode)
+        debugPrint('🎵 Error in _addToCollectionAndRemoveFromWantlist: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ Error adding to collection: $e'),
+          content: Text('❌ Fehler beim Hinzufügen: $e'),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
-  // Delete from wantlist
   Future<void> _deleteFromWantlist(Album album) async {
     try {
+      if (kDebugMode) debugPrint('💔 Starting delete from wantlist...');
+      if (kDebugMode) debugPrint('💔 Album: ${album.name} by ${album.artist}');
+
+      // Versuche zuerst bei Discogs zu löschen, wenn Release-ID bekannt
+      final releaseId = _extractReleaseId(album);
+      if (kDebugMode) debugPrint('💔 Release ID: $releaseId');
+
+      bool discogsRemovalSuccessful = false;
+      if (_hasDiscogsAuth &&
+          _discogsService != null &&
+          _discogsService!.hasWriteAccess &&
+          releaseId != null &&
+          releaseId.isNotEmpty) {
+        try {
+          if (kDebugMode) debugPrint('💔 Removing from Discogs: $releaseId');
+          await _discogsService!.removeFromWantlist(releaseId);
+          if (kDebugMode) debugPrint('💔 Successfully removed from Discogs');
+          discogsRemovalSuccessful = true;
+        } catch (e) {
+          if (kDebugMode) debugPrint('💔 Failed to remove from Discogs: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                    '❌ Entfernen bei Discogs fehlgeschlagen: $e – Wird trotzdem lokal entfernt'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          // Weiter mit lokaler Entfernung auch wenn Discogs fehlschlägt
+        }
+      } else {
+        if (kDebugMode)
+          debugPrint(
+              '💔 Cannot remove from Discogs: auth=${_hasDiscogsAuth}, service=${_discogsService != null}, writeAccess=${_discogsService?.hasWriteAccess}, releaseId=$releaseId');
+      }
+
+      // Lokal entfernen und speichern
       setState(() {
         _wantedAlbums.removeWhere((a) => a.id == album.id);
-        _filteredWantlistAlbums = _wantedAlbums;
+        _filteredWantlistAlbums = _wantedAlbums.where((a) {
+          final q = _searchController.text.toLowerCase();
+          return a.name.toLowerCase().contains(q) ||
+              a.artist.toLowerCase().contains(q);
+        }).toList();
       });
-
       await _jsonService.saveWantlist(_wantedAlbums);
 
+      if (kDebugMode) debugPrint('💔 Removed from local wantlist');
+
       if (!mounted) return;
+
+      final discogsInfo = discogsRemovalSuccessful ? ' und aus Discogs' : '';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ Removed "${album.name}" from wantlist'),
+          content:
+              Text('✅ "${album.name}" aus Wunschliste$discogsInfo entfernt'),
           backgroundColor: Colors.orange,
         ),
       );
     } catch (e) {
+      if (kDebugMode) debugPrint('💔 Error in _deleteFromWantlist: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ Error removing from wantlist: $e'),
+          content: Text('❌ Fehler beim Entfernen: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -409,54 +480,46 @@ class WantlistScreenState extends State<WantlistScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Wantlist'),
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
-        ),
+      return AppLayout(
+        title: 'Wunschliste',
+        appBarColor: Colors.green,
         body: const Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
-              Text('Loading wantlist...'),
+              Text('Wunschliste wird geladen...'),
             ],
           ),
         ),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Wantlist (${_filteredWantlistAlbums.length})'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            onPressed: _refreshWantlist,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh Wantlist',
-          ),
-        ],
-      ),
+    return AppLayout(
+      title: 'Wunschliste (${_filteredWantlistAlbums.length})',
+      appBarColor: Colors.green,
+      actions: [
+        IconButton(
+          onPressed: _refreshWantlist,
+          icon: const Icon(Icons.refresh),
+          tooltip: 'Wunschliste aktualisieren',
+        ),
+      ],
       body: Column(
         children: [
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
+          if (!_hasDiscogsAuth)
+            StatusBanner.warning(
+              'Bitte OAuth in den Einstellungen konfigurieren, um die Wunschliste zu synchronisieren',
+            ),
+          SectionCard(
+            title: 'Suche',
+            child: SearchBarWidget(
               controller: _searchController,
-              decoration: const InputDecoration(
-                hintText: 'Search wantlist...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
+              hintText: 'Wunschliste durchsuchen...',
+              enabled: true,
             ),
           ),
-
-          // Wantlist Items
           Expanded(
             child: _filteredWantlistAlbums.isEmpty
                 ? Center(
@@ -466,12 +529,12 @@ class WantlistScreenState extends State<WantlistScreen> {
                         const Icon(Icons.favorite_border,
                             size: 64, color: Colors.grey),
                         const SizedBox(height: 16),
-                        const Text('No wantlist items found'),
+                        const Text('Keine Einträge in der Wunschliste'),
                         const SizedBox(height: 8),
                         Text(
-                          _hasDiscogsToken
-                              ? 'Add items to your Discogs wantlist or configure token in Settings'
-                              : 'Configure Discogs token in Settings to sync your wantlist',
+                          _hasDiscogsAuth
+                              ? 'Füge Einträge zu deiner Discogs-Wunschliste hinzu'
+                              : 'Bitte OAuth in den Einstellungen konfigurieren',
                           style: TextStyle(color: Colors.grey[600]),
                           textAlign: TextAlign.center,
                         ),
@@ -513,45 +576,41 @@ class WantlistScreenState extends State<WantlistScreen> {
                                   break;
                               }
                             },
-                            itemBuilder: (context) => [
-                              const PopupMenuItem<String>(
+                            itemBuilder: (context) => const [
+                              PopupMenuItem<String>(
                                 value: 'add_collection',
                                 child: ListTile(
                                   leading: Icon(Icons.library_add),
-                                  title: Text('Add to Collection'),
+                                  title: Text('Zur Sammlung'),
                                 ),
                               ),
-                              const PopupMenuItem<String>(
+                              PopupMenuItem<String>(
                                 value: 'delete',
                                 child: ListTile(
                                   leading:
                                       Icon(Icons.delete, color: Colors.red),
-                                  title: Text('Remove from Wantlist'),
+                                  title: Text('Entfernen'),
                                 ),
                               ),
                             ],
                           ),
-                          onTap: () {
+                          onTap: () async {
+                            final tracks = await _ensureTracksLoaded(album);
+                            if (!mounted) return;
+
+                            // FIXED: Verwende sichere Track-Sortierung
+                            final sorted = List<Track>.from(tracks)
+                              ..sort((a, b) => a.compareTo(b));
+
                             showDialog(
                               context: context,
                               builder: (BuildContext context) {
-                                List<Track> sortedTracks =
-                                    List.from(album.tracks)
-                                      ..sort((a, b) {
-                                        // Sichere Konvertierung zu Integer
-                                        int trackA =
-                                            int.tryParse(a.trackNumber) ?? 0;
-                                        int trackB =
-                                            int.tryParse(b.trackNumber) ?? 0;
-                                        return trackA.compareTo(trackB);
-                                      });
                                 return AlertDialog(
                                   title: Text(album.name),
                                   content: SingleChildScrollView(
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        // Show album information
                                         ListTile(
                                           leading: const Icon(Icons.person),
                                           title: const Text("Artist"),
@@ -580,30 +639,32 @@ class WantlistScreenState extends State<WantlistScreen> {
                                               album.digital ? "Yes" : "No"),
                                         ),
                                         const Divider(),
-                                        // Show tracks
-                                        if (sortedTracks.isEmpty)
+                                        if (sorted.isEmpty)
                                           const ListTile(
                                             leading: Icon(Icons.info_outline),
-                                            title: Text("No tracks available"),
+                                            title:
+                                                Text("Keine Tracks vorhanden"),
                                             subtitle: Text(
-                                                "Tracks will be loaded from Discogs"),
-                                          ),
-                                        ...sortedTracks.map((track) {
-                                          return ListTile(
-                                            leading: Text(
-                                                "Track ${track.getFormattedTrackNumber()}"),
-                                            title: Text(track.title),
-                                          );
-                                        }),
+                                                "Trackliste ist nicht verfügbar"),
+                                          )
+                                        else
+                                          ...sorted.map((track) => ListTile(
+                                                leading: Text(
+                                                  "Track ${track.getFormattedTrackNumber()}",
+                                                  style: const TextStyle(
+                                                      fontSize: 12),
+                                                ),
+                                                title: Text(track.title),
+                                                dense: true,
+                                              )),
                                       ],
                                     ),
                                   ),
                                   actions: [
                                     TextButton(
-                                      child: const Text("Close"),
-                                      onPressed: () {
-                                        Navigator.of(context).pop();
-                                      },
+                                      child: const Text("Schließen"),
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(),
                                     ),
                                   ],
                                 );
@@ -617,58 +678,25 @@ class WantlistScreenState extends State<WantlistScreen> {
           ),
         ],
       ),
-      // ✅ KORREKT PLATZIERTE DEBUG BUTTONS
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          // ✅ DEBUG BUTTON
-          if (_hasDiscogsToken && _discogsService != null)
-            FloatingActionButton.small(
-              heroTag: "debug",
-              onPressed: () async {
-                print('🔥 MANUAL DEBUG BUTTON PRESSED!');
-                await _debugCompareTokens(); // ← NEUE FUNKTION!
-
-                try {
-                  final albums = await _discogsService!.getWantlistAsAlbums();
-                  print('🎯 MANUAL TEST RESULT: ${albums.length} albums');
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Debug: Found ${albums.length} albums'),
-                      backgroundColor: Colors.purple,
-                    ),
-                  );
-                } catch (e) {
-                  print('❌ MANUAL TEST ERROR: $e');
-                }
-              },
-              backgroundColor: Colors.purple,
-              child: const Icon(Icons.bug_report),
+      floatingActionButton: FloatingActionButton(
+        heroTag: "add",
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddWantedAlbumScreen(
+                jsonService: _jsonService,
+                configManager: widget.configManager,
+              ),
             ),
-          const SizedBox(height: 8),
-
-          // Original Add Button
-          FloatingActionButton(
-            onPressed: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AddWantedAlbumScreen(
-                    jsonService: _jsonService,
-                    configManager: widget.configManager,
-                  ),
-                ),
-              );
-
-              if (result == true) {
-                await _refreshWantlist();
-              }
-            },
-            backgroundColor: Colors.green,
-            child: const Icon(Icons.add),
-          ),
-        ],
+          );
+          if (!mounted) return;
+          if (result == true) {
+            await _refreshWantlist();
+          }
+        },
+        backgroundColor: Colors.green,
+        child: const Icon(Icons.add),
       ),
     );
   }

@@ -1,13 +1,23 @@
-// lib/screens/discogs_search_screen.dart
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:music_up/models/album_model.dart';
-import 'package:music_up/services/discogs_service.dart';
+import 'package:music_up/services/discogs_service_unified.dart';
+import 'package:music_up/services/json_service.dart';
+import 'package:music_up/theme/design_system.dart';
+import 'package:music_up/widgets/app_layout.dart';
+import 'package:music_up/widgets/search_bar_widget.dart';
+import 'package:music_up/widgets/section_card.dart';
+import 'package:music_up/widgets/status_banner.dart';
 
 class DiscogsSearchScreen extends StatefulWidget {
-  final String? discogsToken;
+  final String? discogsToken; // nicht mehr genutzt (Personal Token entfernt)
+  final JsonService jsonService;
 
-  const DiscogsSearchScreen({super.key, required this.discogsToken});
+  const DiscogsSearchScreen({
+    super.key,
+    required this.discogsToken,
+    required this.jsonService,
+  });
 
   @override
   DiscogsSearchScreenState createState() => DiscogsSearchScreenState();
@@ -17,16 +27,25 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<DiscogsSearchResult> _searchResults = [];
   bool _isLoading = false;
-  bool _hasToken = false;
+  bool _hasAuth = false;
 
-  late DiscogsService _discogsService;
+  DiscogsServiceUnified? _discogsService;
 
   @override
   void initState() {
     super.initState();
-    _hasToken = widget.discogsToken != null && widget.discogsToken!.isNotEmpty;
-    if (_hasToken) {
-      _discogsService = DiscogsService(widget.discogsToken!);
+    _initAuth();
+  }
+
+  Future<void> _initAuth() async {
+    _discogsService = DiscogsServiceUnified(widget.jsonService.configManager);
+    setState(() {
+      _hasAuth = _discogsService!.hasAuth; // nur OAuth
+    });
+
+    if (kDebugMode) {
+      final status = _discogsService!.statusMessage;
+      debugPrint('🔐 Auth status: $status');
     }
   }
 
@@ -37,12 +56,12 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
   }
 
   Future<void> _searchDiscogs() async {
-    if (!_hasToken) {
+    if (_discogsService == null || !_discogsService!.hasAuth) {
       _showNoTokenMessage();
       return;
     }
 
-    String query = _searchController.text.trim();
+    final query = _searchController.text.trim();
     if (query.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter search terms')),
@@ -55,13 +74,18 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
     });
 
     try {
-      List<DiscogsSearchResult> results =
-          await _discogsService.searchReleases(query);
+      if (kDebugMode) debugPrint('🔍 Searching Discogs for: "$query"');
+      final rawResults = await _discogsService!.searchReleases(query);
+      final results =
+          rawResults.map((json) => DiscogsSearchResult.fromJson(json)).toList();
+      if (kDebugMode) debugPrint('🔍 Found ${results.length} results');
+
       setState(() {
         _searchResults = results;
         _isLoading = false;
       });
     } catch (e) {
+      if (kDebugMode) debugPrint('🔍 Search failed: $e');
       setState(() {
         _isLoading = false;
       });
@@ -75,37 +99,37 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
   void _showNoTokenMessage() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Please set your Discogs token in Settings first!'),
+        content: Text('Bitte OAuth in den Einstellungen einrichten.'),
         duration: Duration(seconds: 3),
       ),
     );
   }
 
-  // NEW: Show album details from search result
   void _showSearchResultDetails(DiscogsSearchResult result) async {
-    // Show loading dialog
+    if (kDebugMode) {
+      debugPrint('🎵 Loading details for: ${result.title} (${result.id})');
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
     try {
-      // Load tracks
-      List<Track> tracks = await _discogsService.getReleaseTracklist(result.id);
+      final tracks = await _discogsService!.getReleaseTracklist(result.id);
+      if (kDebugMode) {
+        debugPrint('🎵 Loaded ${tracks.length} tracks for ${result.title}');
+      }
 
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
 
-      // Show album details
       showDialog(
         context: context,
         builder: (BuildContext context) {
-          List<Track> sortedTracks = List.from(tracks)
-            ..sort((a, b) =>
-                int.parse(a.trackNumber).compareTo(int.parse(b.trackNumber)));
+          final sortedTracks = List<Track>.from(tracks)
+            ..sort((a, b) => a.compareTo(b));
 
           return AlertDialog(
             title: Text(result.title),
@@ -113,7 +137,6 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Show album information
                   ListTile(
                     leading: const Icon(Icons.person),
                     title: const Text("Artist"),
@@ -135,45 +158,32 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
                       title: const Text("Genre"),
                       subtitle: Text(result.genre),
                     ),
-                  if (sortedTracks.isNotEmpty) ...[
-                    const Divider(),
-                    Text(
-                      "Tracks (${sortedTracks.length})",
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Show tracks
-                    ...sortedTracks.map((track) {
-                      return ListTile(
+                  const Divider(),
+                  if (sortedTracks.isEmpty)
+                    const ListTile(
+                      leading: Icon(Icons.info_outline),
+                      title: Text("No tracks available"),
+                      subtitle:
+                          Text("This release has no tracklist information"),
+                    )
+                  else
+                    ...sortedTracks.map(
+                      (track) => ListTile(
                         leading: Text(
                           "Track ${track.getFormattedTrackNumber()}",
                           style: const TextStyle(fontSize: 12),
                         ),
                         title: Text(track.title),
                         dense: true,
-                      );
-                    }),
-                  ] else ...[
-                    const Divider(),
-                    const ListTile(
-                      leading: Icon(Icons.info_outline),
-                      title: Text("No tracks available"),
-                      subtitle:
-                          Text("This release has no tracklist information"),
+                      ),
                     ),
-                  ],
                 ],
               ),
             ),
             actions: [
               TextButton(
                 child: const Text("Close"),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
+                onPressed: () => Navigator.of(context).pop(),
               ),
             ],
           );
@@ -188,7 +198,6 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
     }
   }
 
-  // Show confirmation dialog for adding to collection
   Future<void> _showAddToCollectionDialog(DiscogsSearchResult result) async {
     String selectedMedium = 'Vinyl';
     bool isDigital = false;
@@ -204,23 +213,22 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text('Adding: "${result.title}" by ${result.artist}'),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: DS.md),
                   DropdownButtonFormField<String>(
                     value: selectedMedium,
                     decoration: const InputDecoration(
                       labelText: 'Which format do you have?',
                       border: OutlineInputBorder(),
                     ),
-                    items: ['Vinyl', 'CD', 'Cassette', 'Digital']
-                        .map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
+                    items: const ['Vinyl', 'CD', 'Cassette', 'Digital']
+                        .map((value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(value),
+                            ))
+                        .toList(),
+                    onChanged: (newValue) {
                       setState(() {
-                        selectedMedium = newValue!;
+                        selectedMedium = newValue ?? 'Vinyl';
                       });
                     },
                   ),
@@ -229,11 +237,7 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
                     title: const Text('Digital Available'),
                     subtitle: const Text('Do you also have it digitally?'),
                     value: isDigital,
-                    onChanged: (bool value) {
-                      setState(() {
-                        isDigital = value;
-                      });
-                    },
+                    onChanged: (value) => setState(() => isDigital = value),
                   ),
                 ],
               ),
@@ -257,17 +261,20 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
     );
   }
 
-  // Convert DiscogsSearchResult to Album with tracks
   Future<Album> _convertToAlbumWithTracks(
       DiscogsSearchResult result, String medium, bool digital) async {
     List<Track> tracks = [];
 
-    // Load tracks from Discogs automatically
     try {
-      tracks = await _discogsService.getReleaseTracklist(result.id);
+      if (kDebugMode) {
+        debugPrint('🎵 Loading tracks for collection album: ${result.title}');
+      }
+      tracks = await _discogsService!.getReleaseTracklist(result.id);
+      if (kDebugMode) {
+        debugPrint('🎵 Loaded ${tracks.length} tracks for collection');
+      }
     } catch (e) {
-      print('Failed to load tracks: $e');
-      // Continue without tracks if loading fails
+      if (kDebugMode) debugPrint('🎵 Failed to load tracks for collection: $e');
     }
 
     return Album(
@@ -277,26 +284,23 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
       genre: result.genre,
       year: result.year,
       medium: medium,
-      // User selected medium
       digital: digital,
-      // User selected digital status
-      tracks: tracks, // Automatically loaded tracks
+      tracks: tracks,
     );
   }
 
-  // Add to collection with confirmation dialog
   Future<void> _addToCollection(
       DiscogsSearchResult result, String medium, bool digital) async {
     try {
-      Album newAlbum = await _convertToAlbumWithTracks(result, medium, digital);
-
+      final newAlbum = await _convertToAlbumWithTracks(result, medium, digital);
       if (!mounted) return;
       Navigator.pop(context, newAlbum);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(
-                'Added "${result.title}" to collection with ${newAlbum.tracks.length} tracks!')),
+          content: Text(
+              'Added "${result.title}" to collection with ${newAlbum.tracks.length} tracks!'),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -306,106 +310,209 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
     }
   }
 
-  // Add to wantlist with tracks
   Future<void> _addToWantlist(DiscogsSearchResult result) async {
-    if (!_hasToken) {
-      _showNoTokenMessage();
+    if (_discogsService == null || !_discogsService!.hasWriteAccess) {
+      _showOAuthNeededDialog(result);
       return;
     }
 
     try {
-      // Add to Discogs wantlist
-      await _discogsService.addToWantlist(result.id);
+      if (kDebugMode) {
+        debugPrint('❤️ Adding to wantlist: ${result.title} (${result.id})');
+      }
+
+      final tokenValid = await _discogsService!.testAuthentication();
+      if (!tokenValid) {
+        throw Exception('OAuth Token ungültig. Bitte erneut authentifizieren.');
+      }
+
+      await _discogsService!.addToWantlist(result.id);
+
+      try {
+        final current = await widget.jsonService.loadWantlist();
+        final exists = current.any((a) =>
+            a.name.toLowerCase() == result.title.toLowerCase() &&
+            a.artist.toLowerCase() == result.artist.toLowerCase());
+
+        if (!exists) {
+          current.add(Album(
+            id: 'want_rel_${result.id}',
+            name: result.title,
+            artist: result.artist,
+            genre: result.genre,
+            year: result.year,
+            medium: result.format,
+            digital: false,
+            tracks: const [],
+          ));
+          await widget.jsonService.saveWantlist(current);
+          if (kDebugMode) debugPrint('❤️ Saved to local wantlist');
+        }
+      } catch (e) {
+        if (kDebugMode) debugPrint('📝 local wantlist save failed: $e');
+      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Added "${result.title}" to Discogs wantlist!')),
+        SnackBar(
+          content:
+              Text('✅ "${result.title}" zur Discogs-Wantlist hinzugefügt!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      if (e.toString().contains('403') ||
+          e.toString().contains('Schreibzugriff') ||
+          e.toString().contains('Owner-Authentifizierung')) {
+        _showOAuthNeededDialog(result);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Fehler: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showOAuthNeededDialog(DiscogsSearchResult result) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('🔐 OAuth benötigt'),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Für das Hinzufügen zur Wantlist ist OAuth erforderlich.'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Abbrechen'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            TextButton(
+              child: const Text('Lokal hinzufügen'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _addToLocalWantlist(result);
+              },
+            ),
+            ElevatedButton(
+              child: const Text('OAuth einrichten'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _goToOAuthSetup();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _addToLocalWantlist(DiscogsSearchResult result) async {
+    final album = Album(
+      id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+      name: result.title,
+      artist: result.artist,
+      genre: result.genre,
+      year: result.year,
+      medium: result.format,
+      digital: false,
+      tracks: [],
+    );
+
+    try {
+      final current = await widget.jsonService.loadWantlist();
+      final exists = current.any((a) =>
+          a.name.toLowerCase() == album.name.toLowerCase() &&
+          a.artist.toLowerCase() == album.artist.toLowerCase());
+
+      if (!exists) {
+        current.add(album);
+        await widget.jsonService.saveWantlist(current);
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              '📱 "${result.title}" ${exists ? "war schon in der lokalen Wantlist" : "zur lokalen Wantlist hinzugefügt"}'),
+          backgroundColor: exists ? Colors.blueGrey : Colors.orange,
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add to wantlist: $e')),
+        SnackBar(
+          content: Text('❌ Konnte lokal nicht hinzufügen: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
 
+  void _goToOAuthSetup() {
+    Navigator.of(context).pushNamed('/settings');
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Search Discogs'),
-        backgroundColor: Colors.orange,
-      ),
+    return AppLayout(
+      title: 'Discogs durchsuchen',
+      appBarColor: Colors.orange,
       body: Column(
         children: [
-          // Token Status Info
-          if (!_hasToken)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12.0),
-              color: Colors.red[100],
-              child: const Text(
-                '⚠️ No Discogs token configured. Please set it in Settings.',
-                style:
-                    TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
+          if (!_hasAuth)
+            StatusBanner.warning(
+              'OAuth nicht konfiguriert. Bitte in den Einstellungen einrichten.',
             ),
-
-          // Search Field
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: const InputDecoration(
-                      hintText: 'Search for artist, album, or song...',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
-                    ),
-                    onSubmitted: (_) => _searchDiscogs(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: _hasToken ? _searchDiscogs : null,
-                  child: const Text('Search'),
-                ),
-              ],
+          SectionCard(
+            title: 'Suche',
+            child: SearchBarWidget(
+              controller: _searchController,
+              hintText: 'Nach Künstler, Album oder Song suchen...',
+              onSearch: _searchDiscogs,
+              enabled: _hasAuth,
             ),
           ),
-
-          // Loading Indicator
           if (_isLoading)
             const Padding(
-              padding: EdgeInsets.all(20.0),
+              padding: EdgeInsets.all(DS.lg),
               child: CircularProgressIndicator(),
             ),
-
-          // Search Results
           Expanded(
             child: _searchResults.isEmpty && !_isLoading
                 ? const Center(
-                    child: Text(
-                      'No results. Try searching for an artist or album.',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.search, size: 64, color: Colors.grey),
+                        SizedBox(height: DS.md),
+                        Text(
+                          'Keine Ergebnisse. Versuchen Sie nach einem Künstler oder Album zu suchen.',
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   )
                 : ListView.builder(
+                    padding: const EdgeInsets.all(DS.md),
                     itemCount: _searchResults.length,
                     itemBuilder: (context, index) {
                       final result = _searchResults[index];
                       return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16.0,
-                          vertical: 4.0,
-                        ),
+                        margin: const EdgeInsets.only(bottom: DS.xs),
                         child: ListTile(
                           leading: result.imageUrl.isNotEmpty
                               ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
+                                  borderRadius: DS.rSm,
                                   child: Image.network(
                                     result.imageUrl,
                                     width: 50,
@@ -415,7 +522,10 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
                                       return Container(
                                         width: 50,
                                         height: 50,
-                                        color: Colors.grey[300],
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[300],
+                                          borderRadius: DS.rSm,
+                                        ),
                                         child: const Icon(Icons.album),
                                       );
                                     },
@@ -424,7 +534,10 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
                               : Container(
                                   width: 50,
                                   height: 50,
-                                  color: Colors.grey[300],
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[300],
+                                    borderRadius: DS.rSm,
+                                  ),
                                   child: const Icon(Icons.album),
                                 ),
                           title: Text(
@@ -434,8 +547,8 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Artist: ${result.artist}'),
-                              Text('Year: ${result.year}'),
+                              Text('Künstler: ${result.artist}'),
+                              Text('Jahr: ${result.year}'),
                               Text('Format: ${result.format}'),
                               if (result.genre.isNotEmpty)
                                 Text('Genre: ${result.genre}'),
@@ -445,24 +558,19 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              // Add to Collection Button
                               IconButton(
                                 icon: const Icon(Icons.add_circle_outline),
-                                tooltip: 'Add to Collection',
+                                tooltip: 'Zur Sammlung hinzufügen',
                                 onPressed: () =>
                                     _showAddToCollectionDialog(result),
                               ),
-                              // Add to Wantlist Button
                               IconButton(
                                 icon: const Icon(Icons.favorite_border),
-                                tooltip: 'Add to Wantlist',
-                                onPressed: _hasToken
-                                    ? () => _addToWantlist(result)
-                                    : null,
+                                tooltip: 'Zur Wantlist hinzufügen',
+                                onPressed: () => _addToWantlist(result),
                               ),
                             ],
                           ),
-                          // NEW: Tap to show details
                           onTap: () => _showSearchResultDetails(result),
                         ),
                       );
@@ -475,7 +583,6 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
   }
 }
 
-// CORRECTED DiscogsSearchResult class - Fixed artist mapping!
 class DiscogsSearchResult {
   final String id;
   final String title;
@@ -496,10 +603,10 @@ class DiscogsSearchResult {
   });
 
   factory DiscogsSearchResult.fromJson(Map<String, dynamic> json) {
-    // FIXED: Correct artist mapping
     String artist = 'Unknown Artist';
+    String title = json['title']?.toString() ?? 'Unknown Title';
 
-    // Try to get artist from multiple possible locations
+    // Try to get artist from various fields
     if (json.containsKey('artist') && json['artist'] != null) {
       artist = json['artist'].toString();
     } else if (json.containsKey('artists') && json['artists'] is List) {
@@ -509,11 +616,19 @@ class DiscogsSearchResult {
       }
     }
 
+    // If artist is still unknown, try to parse from title "Artist - Album"
+    if (artist == 'Unknown Artist' && title.contains(' - ')) {
+      final parts = title.split(' - ');
+      if (parts.length >= 2) {
+        artist = parts[0].trim();
+        title = parts.sublist(1).join(' - ').trim();
+      }
+    }
+
     return DiscogsSearchResult(
       id: json['id']?.toString() ?? '',
-      title: json['title']?.toString() ?? 'Unknown Title',
+      title: title,
       artist: artist,
-      // FIXED!
       genre: (json['genre'] is List && json['genre'].isNotEmpty)
           ? json['genre'][0].toString()
           : json['genre']?.toString() ?? '',

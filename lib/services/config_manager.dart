@@ -2,6 +2,7 @@
 
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -10,6 +11,7 @@ class ConfigManager {
   String? _jsonFilePath;
   String? _wantlistFilePath;
   String? _discogsToken;
+  ThemeMode? _themeMode; // ✅ NEU
 
   Future<void> loadConfig() async {
     _prefs = await SharedPreferences.getInstance();
@@ -30,6 +32,10 @@ class ConfigManager {
 
     // Lade Discogs Token
     _discogsToken = _prefs.getString('discogs_token');
+
+    // ✅ Theme Mode laden
+    String? themeModeString = _prefs.getString('theme_mode');
+    _themeMode = _parseThemeMode(themeModeString);
   }
 
   // ===== COLLECTION FILE PATH METHODS =====
@@ -66,6 +72,26 @@ class ConfigManager {
   Future<void> setDiscogsToken(String token) async {
     _discogsToken = token;
     await _prefs.setString('discogs_token', token);
+  }
+
+  // ✅ THEME MODE METHODS
+  ThemeMode getThemeMode() => _themeMode ?? ThemeMode.system;
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    _themeMode = mode;
+    await _prefs.setString('theme_mode', mode.name);
+  }
+
+  ThemeMode _parseThemeMode(String? value) {
+    switch (value) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      case 'system':
+      default:
+        return ThemeMode.system;
+    }
   }
 
   Future<void> saveConfig() async {
@@ -113,11 +139,17 @@ class ConfigManager {
     await _prefs.remove('json_file_path');
     await _prefs.remove('wantlist_file_path');
     await _prefs.remove('discogs_token');
+    await _prefs.remove('theme_mode');
+    await _prefs.remove('discogs_oauth_token');
+    await _prefs.remove('discogs_oauth_token_secret');
+    await _prefs.remove('discogs_consumer_key');
+    await _prefs.remove('discogs_consumer_secret');
 
     // Setze interne Variablen zurück
     _jsonFilePath = null;
     _wantlistFilePath = null;
     _discogsToken = null;
+    _themeMode = null;
 
     // Lade Standard-Konfiguration neu
     await loadConfig();
@@ -141,6 +173,53 @@ class ConfigManager {
           : 'NOT_SET',
       'is_configured': isConfigured().toString(),
       'has_discogs_token': hasDiscogsToken().toString(),
+      'theme_mode': _themeMode?.name ?? 'system',
+    };
+  }
+
+  // ===== DISCOGS OAUTH METHODS =====
+  // OAuth Token und Secret speichern
+  Future<void> setDiscogsOAuthTokens(String token, String secret) async {
+    await _prefs.setString('discogs_oauth_token', token);
+    await _prefs.setString('discogs_oauth_token_secret', secret);
+  }
+
+  // OAuth Tokens laden
+  Map<String, String?> getDiscogsOAuthTokens() {
+    return {
+      'token': _prefs.getString('discogs_oauth_token'),
+      'secret': _prefs.getString('discogs_oauth_token_secret'),
+    };
+  }
+
+  // Prüfen ob OAuth Tokens vorhanden sind
+  bool hasDiscogsOAuthTokens() {
+    final tokens = getDiscogsOAuthTokens();
+    return tokens['token'] != null &&
+        tokens['secret'] != null &&
+        tokens['token']!.isNotEmpty &&
+        tokens['secret']!.isNotEmpty;
+  }
+
+  // OAuth Tokens löschen
+  Future<void> clearDiscogsOAuthTokens() async {
+    await _prefs.remove('discogs_oauth_token');
+    await _prefs.remove('discogs_oauth_token_secret');
+  }
+
+  // ===== NEU: DISCOGS CONSUMER CREDENTIALS =====
+  Future<void> setDiscogsConsumerCredentials({
+    required String consumerKey,
+    required String consumerSecret,
+  }) async {
+    await _prefs.setString('discogs_consumer_key', consumerKey);
+    await _prefs.setString('discogs_consumer_secret', consumerSecret);
+  }
+
+  Map<String, String?> getDiscogsConsumerCredentials() {
+    return {
+      'consumer_key': _prefs.getString('discogs_consumer_key'),
+      'consumer_secret': _prefs.getString('discogs_consumer_secret'),
     };
   }
 }

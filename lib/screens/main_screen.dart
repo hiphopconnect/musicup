@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/screens/add_album_screen.dart';
-import 'package:music_up/screens/discogs_search_screen.dart'; // KORRIGIERT: Import für DiscogsSearchScreen
+import 'package:music_up/screens/discogs_search_screen.dart';
 import 'package:music_up/screens/edit_album_screen.dart';
 import 'package:music_up/screens/settings_screen.dart';
-import 'package:music_up/screens/wantlist_screen.dart'; // KORRIGIERT: Import für WantlistScreen
+import 'package:music_up/screens/wantlist_screen.dart';
 import 'package:music_up/services/json_service.dart';
+import 'package:music_up/widgets/app_layout.dart';
+import 'package:music_up/widgets/counter_bar.dart';
 
 class MainScreen extends StatefulWidget {
   final JsonService jsonService;
+  final Function(ThemeMode)? onThemeChanged;
 
-  const MainScreen({super.key, required this.jsonService});
+  const MainScreen({super.key, required this.jsonService, this.onThemeChanged});
 
   @override
   MainScreenState createState() => MainScreenState();
@@ -218,10 +221,9 @@ class MainScreenState extends State<MainScreen> {
     );
   }
 
-  // FIXED: Open wantlist (now functional!)
+  // Open wantlist and reload collection after returning
   void _openWantlist() async {
     try {
-      // Navigate to WantlistScreen - KORRIGIERT: Richtige Parameter!
       final result = await Navigator.push(
         context,
         MaterialPageRoute(
@@ -231,21 +233,10 @@ class MainScreenState extends State<MainScreen> {
         ),
       );
 
-      // If an album was returned from wantlist, add it to collection
-      if (result != null && result is Album) {
-        setState(() {
-          _albums.add(result);
-          _sortAlbums();
-          _filterAlbums();
-          _updateCounts();
-        });
-        await widget.jsonService.saveAlbums(_albums);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Added "${result.name}" to collection!')),
-          );
-        }
+      // WICHTIG: Egal was zurückkommt (true, Album, etc.) => Sammlung neu laden
+      if (!mounted) return;
+      if (result != null) {
+        _loadAlbums();
       }
     } catch (e) {
       if (!mounted) return;
@@ -258,14 +249,13 @@ class MainScreenState extends State<MainScreen> {
     }
   }
 
-  // FIXED: Open Discogs search (now functional!)
+  // Discogs-Suche: nur noch mit OAuth
   void _openDiscogsSearch() async {
-    // Check if Discogs token is configured
-    if (!widget.jsonService.configManager.hasDiscogsToken()) {
+    final cm = widget.jsonService.configManager;
+    if (!cm.hasDiscogsOAuthTokens()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content:
-              Text('Please configure your Discogs token in Settings first!'),
+          content: Text('Bitte zuerst OAuth in den Einstellungen abschließen.'),
           duration: Duration(seconds: 3),
         ),
       );
@@ -273,17 +263,16 @@ class MainScreenState extends State<MainScreen> {
     }
 
     try {
-      // Navigate to DiscogsSearchScreen - KORRIGIERT: Richtige Parameter!
       final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => DiscogsSearchScreen(
-            discogsToken: widget.jsonService.configManager.getDiscogsToken(),
+            discogsToken: null, // Personal Token wird nicht mehr genutzt
+            jsonService: widget.jsonService,
           ),
         ),
       );
 
-      // If an album was returned from search, add it to collection
       if (result != null && result is Album) {
         setState(() {
           _albums.add(result);
@@ -312,147 +301,151 @@ class MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("MusicUp"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () async {
-              final newAlbum = await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AddAlbumScreen()),
-              );
-              if (newAlbum != null && newAlbum is Album) {
-                setState(() {
-                  _albums.add(newAlbum);
-                  _sortAlbums(); // Sort album list
-                  _filterAlbums(); // Reapply filters
-                  _updateCounts(); // Update counters
-                });
-                widget.jsonService.saveAlbums(_albums);
-              }
-            },
-          ),
-          // FUNCTIONAL: Wantlist Button
-          IconButton(
-            icon: const Icon(Icons.favorite_border),
-            tooltip: 'Wantlist',
-            onPressed: _openWantlist,
-          ),
-          // FUNCTIONAL: Discogs Search Button
-          IconButton(
-            icon: const Icon(Icons.search_outlined),
-            tooltip: 'Search Discogs',
-            onPressed: _openDiscogsSearch,
-          ),
-          IconButton(
-            icon: const Icon(Icons.sort_by_alpha),
-            tooltip: _isAscending ? 'Sort Z-A' : 'Sort A-Z',
-            onPressed: _toggleSortOrder,
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      SettingsScreen(jsonService: widget.jsonService),
-                ),
-              ).then((value) {
-                if (value == true) {
-                  _loadAlbums(); // Reload albums after changing settings
-                }
+    return AppLayout(
+      title: "MusicUp",
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.add),
+          onPressed: () async {
+            final newAlbum = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AddAlbumScreen()),
+            );
+            if (newAlbum != null && newAlbum is Album) {
+              setState(() {
+                _albums.add(newAlbum);
+                _sortAlbums(); // Sort album list
+                _filterAlbums(); // Reapply filters
+                _updateCounts(); // Update counters
               });
-            },
-          ),
-        ],
-      ),
+              widget.jsonService.saveAlbums(_albums);
+            }
+          },
+        ),
+        // FUNCTIONAL: Wantlist Button
+        IconButton(
+          icon: const Icon(Icons.favorite_border),
+          tooltip: 'Wantlist',
+          onPressed: _openWantlist,
+        ),
+        // FUNCTIONAL: Discogs Search Button
+        IconButton(
+          icon: const Icon(Icons.search_outlined),
+          tooltip: 'Search Discogs',
+          onPressed: _openDiscogsSearch,
+        ),
+        IconButton(
+          icon: const Icon(Icons.settings),
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => SettingsScreen(
+                  jsonService: widget.jsonService,
+                  onThemeChanged: widget.onThemeChanged,
+                ),
+              ),
+            );
+
+            // ✅ IMMER neu laden – unabhängig vom Rückgabewert.
+            await widget.jsonService.configManager.loadConfig();
+            _loadAlbums();
+          },
+        ),
+      ],
       body: Column(
         children: [
-          // Display media count and digital status
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              children: [
-                Text(
-                  'Vinyl: $vinylCount  CD: $cdCount  Cassette: $cassetteCount  Digital: $digitalCount',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12.0),
-                ),
-                Text(
-                  'Digital Yes: $digitalYesCount  Digital No: $digitalNoCount',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12.0),
-                ),
-              ],
-            ),
+          // Einheitliche Zählerleiste
+          CounterBar(
+            vinyl: vinylCount,
+            cd: cdCount,
+            cassette: cassetteCount,
+            digitalMedium: digitalCount,
+            // Medium == "Digital"
+            digitalYes: digitalYesCount,
+            // Flag digital == true
+            digitalNo: digitalNoCount, // Flag digital == false
           ),
-          // Filter area
+          // Filterbereich in wiederverwendbarer SectionCard
           ExpansionTile(
             title: const Text('Filter'),
             children: [
-              // Medium filter and reset button in one row
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
                   children: [
-                    // Expanded Wrap with FilterChips
-                    Expanded(
-                      child: Wrap(
-                        spacing: 10.0,
-                        children: _mediumFilters.keys.map((String key) {
-                          return FilterChip(
-                            label: Text(key),
-                            selected: _mediumFilters[key]!,
-                            onSelected: (bool value) {
-                              setState(() {
-                                _mediumFilters[key] = value;
-                                _filterAlbums();
-                              });
-                            },
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    // Reset button
-                    IconButton(
-                      icon: const Icon(Icons.refresh),
-                      tooltip: 'Medium filter reset',
-                      onPressed: _resetMediumFilters,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              // Digital status filter
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Digital:'),
-                    const SizedBox(width: 10),
-                    DropdownButton<String>(
-                      value: _digitalFilter,
-                      items: const [
-                        DropdownMenuItem(value: 'All', child: Text('All')),
-                        DropdownMenuItem(value: 'Yes', child: Text('Yes')),
-                        DropdownMenuItem(value: 'No', child: Text('No')),
+                    // Medium filter and reset button in one row
+                    Row(
+                      children: [
+                        // Expanded Wrap with FilterChips
+                        Expanded(
+                          child: Wrap(
+                            spacing: 10.0,
+                            children: _mediumFilters.keys.map((String key) {
+                              return FilterChip(
+                                label: Text(key),
+                                selected: _mediumFilters[key]!,
+                                onSelected: (bool value) {
+                                  setState(() {
+                                    _mediumFilters[key] = value;
+                                    _filterAlbums();
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        // Reset button
+                        IconButton(
+                          icon: const Icon(Icons.refresh),
+                          tooltip: 'Medium filter reset',
+                          onPressed: _resetMediumFilters,
+                        ),
                       ],
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _digitalFilter = newValue!;
-                          _filterAlbums();
-                        });
-                      },
+                    ),
+                    const SizedBox(height: 10),
+                    // Sort order control
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('Sort:'),
+                        const SizedBox(width: 10),
+                        ElevatedButton.icon(
+                          icon: Icon(_isAscending ? Icons.sort_by_alpha : Icons.sort_by_alpha),
+                          label: Text(_isAscending ? 'A-Z' : 'Z-A'),
+                          onPressed: _toggleSortOrder,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    // Digital status filter
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('Digital:'),
+                        const SizedBox(width: 10),
+                        DropdownButton<String>(
+                          value: _digitalFilter,
+                          items: const [
+                            DropdownMenuItem(value: 'All', child: Text('All')),
+                            DropdownMenuItem(value: 'Yes', child: Text('Yes')),
+                            DropdownMenuItem(value: 'No', child: Text('No')),
+                          ],
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _digitalFilter = newValue!;
+                              _filterAlbums();
+                            });
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ],
           ),
+
           // Search area
           Padding(
             padding: const EdgeInsets.all(8.0),
@@ -473,8 +466,8 @@ class MainScreenState extends State<MainScreen> {
                     });
                   },
                 ),
-                const SizedBox(
-                    width: 10), // Space between dropdown and search field
+                const SizedBox(width: 10),
+                // Space between dropdown and search field
                 // Search field
                 Expanded(
                   child: TextField(
@@ -544,10 +537,11 @@ class MainScreenState extends State<MainScreen> {
                               showDialog(
                                 context: context,
                                 builder: (BuildContext context) {
-                                  List<Track> sortedTracks = List.from(
-                                      album.tracks)
-                                    ..sort((a, b) => int.parse(a.trackNumber)
-                                        .compareTo(int.parse(b.trackNumber)));
+                                  // FIXED: Verwende sichere Track-Sortierung
+                                  List<Track> sortedTracks =
+                                      List.from(album.tracks)
+                                        ..sort((a, b) => a.compareTo(b));
+
                                   return AlertDialog(
                                     title: Text(album.name),
                                     content: SingleChildScrollView(
@@ -574,13 +568,26 @@ class MainScreenState extends State<MainScreen> {
                                           ),
                                           const Divider(),
                                           // Show tracks
-                                          ...sortedTracks.map((track) {
-                                            return ListTile(
-                                              leading: Text(
-                                                  "Track ${track.getFormattedTrackNumber()}"),
-                                              title: Text(track.title),
-                                            );
-                                          }),
+                                          if (sortedTracks.isEmpty)
+                                            const ListTile(
+                                              leading: Icon(Icons.info_outline),
+                                              title:
+                                                  Text("No tracks available"),
+                                              subtitle: Text(
+                                                  "This album has no tracklist"),
+                                            )
+                                          else
+                                            ...sortedTracks.map((track) {
+                                              return ListTile(
+                                                leading: Text(
+                                                  "Track ${track.getFormattedTrackNumber()}",
+                                                  style: const TextStyle(
+                                                      fontSize: 12),
+                                                ),
+                                                title: Text(track.title),
+                                                dense: true,
+                                              );
+                                            }),
                                         ],
                                       ),
                                     ),

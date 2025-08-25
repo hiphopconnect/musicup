@@ -98,4 +98,54 @@ class Track {
   String getFormattedTrackNumber() {
     return trackNumber.padLeft(2, '0');
   }
+
+  /// Extrahiert eine numerische Sortierungsreihenfolge aus der Track-Nummer
+  /// Unterstützt Formate wie: "1", "01", "A1", "B2", "1.1", etc.
+  int getNumericSortOrder() {
+    if (trackNumber.isEmpty) return 0;
+
+    try {
+      // Versuche direktes Parsen für einfache Zahlen
+      final directParse = int.tryParse(trackNumber);
+      if (directParse != null) return directParse;
+
+      // Behandle alphanumerische Formate (A1, B2, etc.)
+      final alphaNumericMatch =
+          RegExp(r'^([A-Za-z])(\d+)$').firstMatch(trackNumber);
+      if (alphaNumericMatch != null) {
+        final letter = alphaNumericMatch.group(1)!.toUpperCase();
+        final number = int.parse(alphaNumericMatch.group(2)!);
+
+        // Konvertiere Buchstaben zu Zahlen: A=100, B=200, C=300, etc.
+        final letterValue =
+            (letter.codeUnitAt(0) - 'A'.codeUnitAt(0) + 1) * 100;
+        return letterValue + number;
+      }
+
+      // Behandle Dezimalzahlen (1.1, 1.2, etc.)
+      final decimalMatch = RegExp(r'^(\d+)\.(\d+)$').firstMatch(trackNumber);
+      if (decimalMatch != null) {
+        final mainNumber = int.parse(decimalMatch.group(1)!);
+        final subNumber = int.parse(decimalMatch.group(2)!);
+        return (mainNumber * 10) + subNumber;
+      }
+
+      // Extrahiere erste Zahl aus gemischtem Text
+      final numberMatch = RegExp(r'\d+').firstMatch(trackNumber);
+      if (numberMatch != null) {
+        return int.parse(numberMatch.group(0)!);
+      }
+
+      // Fallback: verwende Hash des Strings
+      return trackNumber.hashCode.abs() % 10000;
+    } catch (e) {
+      // Absolute Fallback-Position
+      return 9999;
+    }
+  }
+
+  /// Vergleicht Tracks für Sortierung
+  int compareTo(Track other) {
+    return getNumericSortOrder().compareTo(other.getNumericSortOrder());
+  }
 }

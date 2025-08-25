@@ -28,6 +28,8 @@ dependencies:
   xml: ^6.1.0                 # Stabil
   logger: ^1.4.0              # Stabil (nicht 2.x!)
   package_info_plus: ^8.1.1   # OK
+  crypto: ^3.0.3
+  url_launcher: ^6.3.0
   http: ^1.1.0
 
 dev_dependencies:

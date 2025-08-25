@@ -88,9 +88,9 @@ class JsonService {
       } else {
         print('⚠️ WARNING: Albums file does not exist: "$filePath"');
 
-        // ✅ Erstelle leere Datei automatisch
+        // ✅ Erstelle leere Datei automatisch (schön formatiert)
         await file.create(recursive: true);
-        await file.writeAsString('[]');
+        await file.writeAsString('[\n]\n');
         print('📁 Created empty albums file');
 
         return [];
@@ -131,7 +131,9 @@ class JsonService {
         };
       }).toList();
 
-      await file.writeAsString(json.encode(jsonList));
+      // ✅ Schön formatiert speichern
+      const encoder = JsonEncoder.withIndent('  ');
+      await file.writeAsString('${encoder.convert(jsonList)}\n');
       print('✅ SUCCESS: Saved albums to file'); // ✅ DEBUG
     } catch (e) {
       print('❌ ERROR saving albums: $e');
@@ -194,9 +196,9 @@ class JsonService {
       } else {
         print('⚠️ WARNING: Wantlist file does not exist: "$filePath"');
 
-        // ✅ Erstelle leere Datei automatisch
+        // ✅ Erstelle leere Datei automatisch (schön formatiert)
         await file.create(recursive: true);
-        await file.writeAsString('[]');
+        await file.writeAsString('[\n]\n');
         print('📁 Created empty wantlist file');
 
         return [];
@@ -237,7 +239,9 @@ class JsonService {
         };
       }).toList();
 
-      await file.writeAsString(json.encode(jsonList));
+      // ✅ Schön formatiert speichern
+      const encoder = JsonEncoder.withIndent('  ');
+      await file.writeAsString('${encoder.convert(jsonList)}\n');
       print('✅ SUCCESS: Saved wantlist to file'); // ✅ DEBUG
     } catch (e) {
       print('❌ ERROR saving wantlist: $e');

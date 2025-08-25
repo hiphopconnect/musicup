@@ -1,1 +1,42 @@
-[{"id":"want_33628299_1754667352588","name":"Polaris","artist":"Prinz Pi","genre":"Electronic","year":"2024","medium":"Vinyl","digital":false,"tracks":[{"trackNumber":"A1","title":"Vor Der Zeit"},{"trackNumber":"A2","title":"Moderne Zeiten Pt.2"},{"trackNumber":"A3","title":"Sommer 2000"},{"trackNumber":"B1","title":"Dumm Pt.2"},{"trackNumber":"B2","title":"Mario Bros"},{"trackNumber":"B3","title":"Gin Tonic"}]},{"id":"want_33671787_1754667352979","name":"Black Samson, The Bastard Swordsman","artist":"Wu-Tang Clan","genre":"Hip Hop","year":"2025","medium":"Vinyl","digital":false,"tracks":[{"trackNumber":"A1","title":"Sucker Free City"},{"trackNumber":"A2","title":"Mandingo"},{"trackNumber":"A3","title":"Roar Of The Lion (The Lion's Pit)"},{"trackNumber":"B1","title":"Claudine"},{"trackNumber":"B2","title":"Shaolin Vs. Lama "},{"trackNumber":"B3","title":"Executioners From Shaolin"},{"trackNumber":"C1","title":"Cleopatra Jones"},{"trackNumber":"C2","title":"Warriors Two, Cooley High"},{"trackNumber":"C3","title":"Let's Do It Again"},{"trackNumber":"D1","title":"Dolemite"},{"trackNumber":"D2","title":"Trouble Man"},{"trackNumber":"D3","title":"Charleston Blue, Legend Of A Fighter"}]},{"id":"want_123144_1754667353380","name":"âTschuldigungâ / âWeltretten 4-â","artist":"Eins, Zwo","genre":"Hip Hop","year":"1999","medium":"Vinyl","digital":false,"tracks":[{"trackNumber":"A1","title":"Weltretten 4-"},{"trackNumber":"A2","title":"Weltretten 4- (Instrumental)"},{"trackNumber":"A3","title":"Weltretten 4- (Acapella)"},{"trackNumber":"B1","title":"Tschuldigung"},{"trackNumber":"B2","title":"Tschuldigung (Instrumental)"},{"trackNumber":"B3","title":"Tschuldigung (Acapella)"}]},{"id":"want_892043_1754667352276","name":"The Essential Michael Jackson","artist":"Michael Jackson","genre":"Electronic","year":"2005","medium":"CD","digital":false,"tracks":[{"trackNumber":"1-1","title":"I Want You Back"},{"trackNumber":"1-2","title":"ABC"},{"trackNumber":"1-3","title":"The Love You Save"},{"trackNumber":"1-4","title":"Got To Be There"},{"trackNumber":"1-5","title":"Rockin' Robin"},{"trackNumber":"1-6","title":"Ben"},{"trackNumber":"1-7","title":"Blame It On The Boogie"},{"trackNumber":"1-8","title":"Shake Your Body (Down To The Ground)"},{"trackNumber":"1-9","title":"Don't Stop 'Til You Get Enough"},{"trackNumber":"1-10","title":"Off The Wall"},{"trackNumber":"1-11","title":"Rock With You"},{"trackNumber":"1-12","title":"She's Out Of My Life"},{"trackNumber":"1-13","title":"Can You Feel It"},{"trackNumber":"1-14","title":"The Girl Is Mine"},{"trackNumber":"1-15","title":"Billie Jean"},{"trackNumber":"1-16","title":"Beat It"},{"trackNumber":"1-17","title":"Wanna Be Startin' Somethin'"},{"trackNumber":"1-18","title":"Human Nature"},{"trackNumber":"1-19","title":"P.Y.T. (Pretty Young Thing)"},{"trackNumber":"1-20","title":"I Just Can't Stop Loving You"},{"trackNumber":"1-21","title":"Thriller"},{"trackNumber":"2-1","title":"Bad"},{"trackNumber":"2-2","title":"The Way You Make Me Feel"},{"trackNumber":"2-3","title":"Man In The Mirror"},{"trackNumber":"2-4","title":"Dirty Diana"},{"trackNumber":"2-5","title":"Another Part Of Me"},{"trackNumber":"2-6","title":"Smooth Criminal"},{"trackNumber":"2-7","title":"Leave Me Alone"},{"trackNumber":"2-8","title":"Black Or White"},{"trackNumber":"2-9","title":"Remember The Time"},{"trackNumber":"2-10","title":"In The Closet"},{"trackNumber":"2-11","title":"Who Is It"},{"trackNumber":"2-12","title":"Heal The World"},{"trackNumber":"2-13","title":"Will You Be There"},{"trackNumber":"2-14","title":"You Are Not Alone"},{"trackNumber":"2-15","title":"Earth Song"},{"trackNumber":"2-16","title":"They Don't Care About Us"},{"trackNumber":"2-17","title":"You Rock My World"}]}]
+[
+  {
+    "id": "want_rel_892043",
+    "name": "The Essential Michael Jackson",
+    "artist": "Michael Jackson",
+    "genre": "Electronic",
+    "year": "2005",
+    "medium": "CD",
+    "digital": false,
+    "tracks": []
+  },
+  {
+    "id": "want_rel_33628299",
+    "name": "Polaris",
+    "artist": "Prinz Pi",
+    "genre": "Electronic",
+    "year": "2024",
+    "medium": "Vinyl",
+    "digital": false,
+    "tracks": []
+  },
+  {
+    "id": "want_rel_33671787",
+    "name": "Black Samson, The Bastard Swordsman",
+    "artist": "Wu-Tang Clan",
+    "genre": "Hip Hop",
+    "year": "2025",
+    "medium": "Vinyl",
+    "digital": false,
+    "tracks": []
+  },
+  {
+    "id": "want_rel_123144",
+    "name": "„Tschuldigung” / „Weltretten 4-”",
+    "artist": "Eins, Zwo",
+    "genre": "Hip Hop",
+    "year": "1999",
+    "medium": "Vinyl",
+    "digital": false,
+    "tracks": []
+  }
+]
