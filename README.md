@@ -2,7 +2,7 @@
 
 ![Flutter](https://img.shields.io/badge/Flutter-v3.32.7-blue.svg)
 ![Dart](https://img.shields.io/badge/Dart-v3.8.1-blue.svg)
-![Version](https://img.shields.io/badge/Version-v2.1.0-blue.svg)
+![Version](https://img.shields.io/badge/Version-v2.1.2-blue.svg)
 ![License](https://img.shields.io/badge/License-Proprietary-red.svg)
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Android-green.svg)
 ![Discogs](https://img.shields.io/badge/Discogs-API%20Integration-orange.svg)
@@ -84,23 +84,23 @@ a seamless experience for importing, exporting, and maintaining your album data.
 
 <img src="screenshots/detail_screen.png" alt="Add Album" width="400"/>
 
-*Add detail screen with form fields.*
+*Album detail view showing comprehensive information including tracks and metadata.*
 
 <img src="screenshots/edit_screen.png" alt="Add Album" width="400"/>
 
-*Add edit screen with form fields.*
+*Album edit interface for modifying existing album information and tracks.*
 
 <img src="screenshots/wantlist_screen.png" alt="Add Album" width="400"/>
 
-*Add wantlist screen with form fields.*
+*Wantlist management screen for tracking desired albums.*
 
 <img src="screenshots/discogs_search_screen.png" alt="Add Album" width="400"/>
 
-*Add discogs screen with form fields.*
+*Discogs search interface for finding albums in the online database.*
 
 <img src="screenshots/settings_screen.png" alt="Add Album" width="400"/>
 
-*Add settings screen with form fields.*
+*Settings and configuration screen for app preferences and Discogs integration.*
 
 ## Installation
 
@@ -121,7 +121,6 @@ a seamless experience for importing, exporting, and maintaining your album data.
    ```
 
 2. **Install Dependencies:**
-
    ```bash
    flutter pub get
    ```

@@ -15,7 +15,6 @@ import 'package:music_up/widgets/album_filters_widget.dart';
 import 'package:music_up/widgets/album_list_widget.dart';
 import 'package:music_up/widgets/app_layout.dart';
 import 'package:music_up/widgets/counter_bar.dart';
-import 'package:music_up/widgets/responsive_widgets.dart';
 
 class MainScreen extends StatefulWidget {
   final JsonService jsonService;
