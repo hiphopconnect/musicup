@@ -288,7 +288,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     final editedAlbum = await Navigator.push<Album>(
       context,
       MaterialPageRoute(
-        builder: (context) => EditAlbumScreen(album: album),
+        builder: (context) => EditAlbumScreen(album: album, jsonService: widget.jsonService),
       ),
     );
 

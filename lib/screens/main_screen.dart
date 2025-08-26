@@ -225,7 +225,7 @@ class MainScreenState extends State<MainScreen> {
     final editedAlbum = await Navigator.push<Album>(
       context,
       MaterialPageRoute(
-        builder: (context) => EditAlbumScreen(album: album),
+        builder: (context) => EditAlbumScreen(album: album, jsonService: widget.jsonService),
       ),
     );
 

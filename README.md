@@ -29,35 +29,43 @@ a seamless experience for importing, exporting, and maintaining your album data.
 ## Features
 
 ### Core Collection Management
+
 - **Add Albums:** Easily add new albums with details such as name, artist, genre, year, medium, and digital availability
 - **Edit Albums:** Modify existing album information to keep your collection up-to-date
 - **Album Details:** View comprehensive album information including track listings and metadata
 - **Duplicate Prevention:** Automatically avoids adding duplicate albums during import and manual entry
 
 ### Advanced Import Features
-- **Folder Import:** Starting from version 1.3.1, fetch song information from folder structures. Press the folder button in the Add Album section and select a folder. The album name is extracted from the folder name, and MP3 files must be formatted as '01 - Tracktitle.mp3' for automatic track detection
+
+- **Folder Import:** Starting from version 1.3.1, fetch song information from folder structures. Press the folder button
+  in the Add Album section and select a folder. The album name is extracted from the folder name, and MP3 files must be
+  formatted as '01 - Tracktitle.mp3' for automatic track detection
 - **Multi-Format Import/Export:** Support for importing and exporting album data in JSON, CSV, and XML formats
 - **Batch Operations:** Import multiple albums at once while maintaining data integrity
 
 ### Discogs Integration
+
 - **OAuth Authentication:** Secure OAuth 1.0a authentication with Discogs API
 - **Album Search:** Search the Discogs database for album information and automatically populate fields
 - **Discogs Collection Sync:** Import albums directly from your Discogs collection
 - **API Rate Limiting:** Intelligent handling of Discogs API rate limits to ensure uninterrupted service
 
 ### Wantlist Management
+
 - **Wantlist Screen:** Dedicated interface for managing albums you want to acquire
 - **Online/Offline Sync:** Synchronize your wantlist with Discogs while maintaining offline functionality
 - **Add to Collection:** Seamlessly move albums from wantlist to your main collection
 - **Smart Merging:** Intelligent conflict resolution when syncing online and offline wantlist data
 
 ### Search & Organization
+
 - **Advanced Search:** Quickly find albums using comprehensive search functionality
 - **Filter Options:** Filter by medium (CD, Vinyl, Digital), genre, year, and digital availability
 - **Real-time Search:** Instant search results as you type
 - **Album Sorting:** Organize your collection with intelligent sorting options
 
 ### User Experience
+
 - **Modern UI:** Clean, intuitive Material Design interface with consistent theming
 - **Auto-Save:** Automatic form data preservation to prevent data loss
 - **Toast Notifications:** Clear feedback for all user actions
@@ -74,9 +82,25 @@ a seamless experience for importing, exporting, and maintaining your album data.
 
 *Add Album screen with form fields.*
 
-<img src="screenshots/export_options.png" alt="Export Options" width="400"/>
+<img src="screenshots/detail_screen.png" alt="Add Album" width="400"/>
 
-*Exporting albums in different formats.*
+*Add detail screen with form fields.*
+
+<img src="screenshots/edit_screen.png" alt="Add Album" width="400"/>
+
+*Add edit screen with form fields.*
+
+<img src="screenshots/wantlist_screen.png" alt="Add Album" width="400"/>
+
+*Add wantlist screen with form fields.*
+
+<img src="screenshots/discogs_search_screen.png" alt="Add Album" width="400"/>
+
+*Add discogs screen with form fields.*
+
+<img src="screenshots/settings_screen.png" alt="Add Album" width="400"/>
+
+*Add settings screen with form fields.*
 
 ## Installation
 
@@ -131,12 +155,14 @@ This will generate a `.deb` package, which you can install on any Debian-based s
 Once installed, **MusicUp** can be launched from your system's application menu. The application provides:
 
 ### Getting Started
+
 1. **Main Collection:** Start by adding albums manually or importing from various formats
 2. **Discogs Integration:** Configure OAuth authentication in settings for enhanced features
 3. **Wantlist Management:** Use the dedicated wantlist screen to track desired albums
 4. **Search & Discovery:** Use the Discogs search to find and add albums with complete metadata
 
 ### Key Workflows
+
 - **Manual Entry:** Add albums with comprehensive details and track information
 - **Folder Import:** Automatically extract album and track data from organized music folders
 - **Discogs Search:** Find albums in the Discogs database and import with full metadata
@@ -148,6 +174,7 @@ Once installed, **MusicUp** can be launched from your system's application menu.
 **MusicUp** supports importing and exporting your collection in multiple standardized formats:
 
 ### 📄 **JSON Format** (Recommended)
+
 The native format with full feature support including tracks and metadata:
 
 ```json
@@ -166,7 +193,7 @@ The native format with full feature support including tracks and metadata:
         "title": "Song Title"
       },
       {
-        "trackNumber": "02", 
+        "trackNumber": "02",
         "title": "Another Song"
       }
     ]
@@ -174,10 +201,12 @@ The native format with full feature support including tracks and metadata:
 ]
 ```
 
-### 📊 **CSV Format** 
+### 📊 **CSV Format**
+
 Spreadsheet-compatible format supporting both basic and detailed album information:
 
 #### **Basic CSV Format:**
+
 ```csv
 name,artist,genre,year,medium,digital
 "Album Name","Artist Name","Rock","2024","Vinyl","true"
@@ -185,6 +214,7 @@ name,artist,genre,year,medium,digital
 ```
 
 #### **Extended CSV Format with Tracks:**
+
 ```csv
 name,artist,genre,year,medium,digital,tracks
 "Album Name","Artist Name","Rock","2024","Vinyl","true","01 - Song Title|02 - Another Song|03 - Final Track"
@@ -192,41 +222,44 @@ name,artist,genre,year,medium,digital,tracks
 ```
 
 **CSV Column Headers:**
+
 - `name` - Album title (required)
-- `artist` - Artist name (required) 
+- `artist` - Artist name (required)
 - `genre` - Music genre (optional)
 - `year` - Release year (optional)
 - `medium` - Physical format: "Vinyl", "CD", "Digital", etc. (optional)
 - `digital` - Digital availability: "true" or "false" (optional)
 - `tracks` - Track listing separated by pipe (`|`) character (optional)
-  - Format: `"01 - Track Title|02 - Next Track|03 - Final Track"`
-  - Each track: `TrackNumber - TrackTitle`
+    - Format: `"01 - Track Title|02 - Next Track|03 - Final Track"`
+    - Each track: `TrackNumber - TrackTitle`
 
 ### 🗂️ **XML Format**
+
 Structured format for data exchange:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <albums>
-  <album>
-    <id>unique_album_id</id>
-    <name>Album Name</name>
-    <artist>Artist Name</artist>
-    <genre>Rock</genre>
-    <year>2024</year>
-    <medium>Vinyl</medium>
-    <digital>true</digital>
-    <tracks>
-      <track>
-        <trackNumber>01</trackNumber>
-        <title>Song Title</title>
-      </track>
-    </tracks>
-  </album>
+    <album>
+        <id>unique_album_id</id>
+        <name>Album Name</name>
+        <artist>Artist Name</artist>
+        <genre>Rock</genre>
+        <year>2024</year>
+        <medium>Vinyl</medium>
+        <digital>true</digital>
+        <tracks>
+            <track>
+                <trackNumber>01</trackNumber>
+                <title>Song Title</title>
+            </track>
+        </tracks>
+    </album>
 </albums>
 ```
 
 ### 📁 **Folder Import Requirements**
+
 For automatic folder-based import:
 
 ```
@@ -237,6 +270,7 @@ For automatic folder-based import:
 ```
 
 **Requirements:**
+
 - **Folder Name** = Album name
 - **File Format:** `##` - `Track Title.mp3`
 - **Track Numbers:** Two digits (01, 02, 03...)
@@ -244,9 +278,10 @@ For automatic folder-based import:
 - **File Extension:** .mp3 files only
 
 ### 💡 **Import Tips**
+
 - **JSON** provides complete data preservation with best track information support
 - **CSV** supports both basic album info and track listings (using pipe `|` separator)
-- **XML** works well for integration with other music management tools  
+- **XML** works well for integration with other music management tools
 - **Folder Import** automatically extracts track listings from organized music files
 - All formats support automatic duplicate detection during import
 - **Track Format**: Always use `TrackNumber - TrackTitle` pattern (e.g., `01 - Song Name`)
@@ -259,6 +294,7 @@ For automatic folder-based import:
 ### Test Coverage
 
 Our test suite includes:
+
 - **Service Layer Tests:** Critical business logic including wantlist sync, Discogs integration, and data persistence
 - **Widget Tests:** UI component testing for forms, album lists, and user interactions
 - **Integration Tests:** Complete user flows from adding albums to editing and deleting
@@ -303,12 +339,14 @@ result, I decided to build **MusicUp**, focusing on ease of use and customizatio
 adding in the future, but for now, manual input is still a reliable option.
 
 **MusicUp** is currently available and tested on:
+
 - **Linux Desktop** (specifically tested on Linux Mint)
 - **Android** (mobile version available)
 
 ## Contributing
 
-**MusicUp** is currently developed as a personal project. While the source code is publicly visible for educational purposes, the project is not accepting external contributions at this time. 
+**MusicUp** is currently developed as a personal project. While the source code is publicly visible for educational
+purposes, the project is not accepting external contributions at this time.
 
 If you have suggestions or feedback, please feel free to contact the author directly.
 
@@ -325,10 +363,10 @@ As a result, I developed the mobile version of the software for my iPhone in Swi
 1. **iOS Version** - Flutter version for iPhone and iPad
 2. **Windows & macOS Desktop** - Native Flutter desktop applications
 3. **Enhanced Features**:
-   - Advanced statistics and analytics (listening habits, collection insights)
-   - Cloud synchronization options for multi-device access
-   - Barcode scanning for quick album identification
-   - Enhanced offline capabilities
+    - Advanced statistics and analytics (listening habits, collection insights)
+    - Cloud synchronization options for multi-device access
+    - Barcode scanning for quick album identification
+    - Enhanced offline capabilities
 
 ## License
 
@@ -352,7 +390,8 @@ This project is proprietary software owned exclusively by the author.
 
 If you are interested in licensing this software or any part of it, please contact the author directly.
 
-**Note**: This is a personal portfolio project. The code is public for demonstration purposes only - all rights remain with the original author.
+**Note**: This is a personal portfolio project. The code is public for demonstration purposes only - all rights remain
+with the original author.
 
 ## Contact
 

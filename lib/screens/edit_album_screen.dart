@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/services/album_edit_service.dart';
+import 'package:music_up/services/json_service.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/app_layout.dart';
 import 'package:music_up/widgets/edit_album_form_widget.dart';
@@ -10,8 +11,9 @@ import 'package:music_up/widgets/track_management_widget.dart';
 
 class EditAlbumScreen extends StatefulWidget {
   final Album album;
+  final JsonService? jsonService;
 
-  const EditAlbumScreen({super.key, required this.album});
+  const EditAlbumScreen({super.key, required this.album, this.jsonService});
 
   @override
   EditAlbumScreenState createState() => EditAlbumScreenState();
@@ -30,6 +32,7 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
   bool? _isDigital;
   String? _selectedYear;
   List<Track> _tracks = [];
+  bool _isLoadingTracks = false;
 
   @override
   void initState() {
@@ -39,6 +42,7 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
     _originalAlbum = widget.album;
     
     _initializeFormData();
+    _loadTracksIfNeeded();
   }
 
   @override
@@ -58,6 +62,30 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
     _isDigital = _originalAlbum.digital;
     _selectedYear = _originalAlbum.year;
     _tracks = _editService.createEditableCopy(_originalAlbum).tracks;
+  }
+
+  Future<void> _loadTracksIfNeeded() async {
+    if (_originalAlbum.tracks.isNotEmpty || widget.jsonService == null) {
+      return;
+    }
+
+    setState(() => _isLoadingTracks = true);
+    
+    try {
+      final albumWithTracks = await widget.jsonService!.loadAlbumWithTracks(_originalAlbum.id);
+      if (mounted && albumWithTracks != null) {
+        setState(() {
+          _tracks = _editService.createEditableCopy(albumWithTracks).tracks;
+          _isLoadingTracks = false;
+        });
+      } else if (mounted) {
+        setState(() => _isLoadingTracks = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingTracks = false);
+      }
+    }
   }
 
   Future<bool> _onWillPop() async {
@@ -202,11 +230,21 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
               const SizedBox(height: DS.lg),
 
               // Track Management
-              TrackManagementWidget(
-                tracks: _tracks,
-                scrollController: _scrollController,
-                onTracksChanged: (tracks) => setState(() => _tracks = tracks),
-              ),
+              _isLoadingTracks
+                  ? const Center(
+                      child: Column(
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 8),
+                          Text('Tracks werden geladen...'),
+                        ],
+                      ),
+                    )
+                  : TrackManagementWidget(
+                      tracks: _tracks,
+                      scrollController: _scrollController,
+                      onTracksChanged: (tracks) => setState(() => _tracks = tracks),
+                    ),
 
               const SizedBox(height: DS.xl),
 
