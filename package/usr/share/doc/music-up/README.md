@@ -1,8 +1,13 @@
 # MusicUp
 
-![Flutter](https://img.shields.io/badge/Flutter-v3.10.5-blue.svg)
-![Dart](https://img.shields.io/badge/Dart-v3.5.3-blue.svg)
-![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
+![Flutter](https://img.shields.io/badge/Flutter-v3.32.7-blue.svg)
+![Dart](https://img.shields.io/badge/Dart-v3.8.1-blue.svg)
+![Version](https://img.shields.io/badge/Version-v2.0.1-blue.svg)
+![License](https://img.shields.io/badge/License-Proprietary-red.svg)
+![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Android-green.svg)
+![Discogs](https://img.shields.io/badge/Discogs-API%20Integration-orange.svg)
+![Portfolio](https://img.shields.io/badge/Portfolio-Project-yellow.svg)
+![Status](https://img.shields.io/badge/Status-Active%20Development-brightgreen.svg)
 
 **MusicUp** is a Flutter-based application designed to help users manage their extensive music collections efficiently.
 Whether you're a music enthusiast organizing your CDs and vinyls or an artist managing your discography, MusicUp offers
@@ -23,13 +28,41 @@ a seamless experience for importing, exporting, and maintaining your album data.
 
 ## Features
 
-- **Add Albums:** Easily add new albums with details such as name, artist, genre, year, medium, and digital
-  availability.
-- **Edit Albums:** Modify existing album information to keep your collection up-to-date.
-- **Import/Export:** Support for importing and exporting album data in JSON, CSV, and XML formats.
-- **Duplicate Prevention:** Automatically avoids adding duplicate albums during import.
-- **Search & Filter:** Quickly find albums using search and filter functionalities.
-- **User-Friendly Interface:** Intuitive design for effortless navigation and management.
+### Core Collection Management
+- **Add Albums:** Easily add new albums with details such as name, artist, genre, year, medium, and digital availability
+- **Edit Albums:** Modify existing album information to keep your collection up-to-date
+- **Album Details:** View comprehensive album information including track listings and metadata
+- **Duplicate Prevention:** Automatically avoids adding duplicate albums during import and manual entry
+
+### Advanced Import Features
+- **Folder Import:** Starting from version 1.3.1, fetch song information from folder structures. Press the folder button in the Add Album section and select a folder. The album name is extracted from the folder name, and MP3 files must be formatted as '01 - Tracktitle.mp3' for automatic track detection
+- **Multi-Format Import/Export:** Support for importing and exporting album data in JSON, CSV, and XML formats
+- **Batch Operations:** Import multiple albums at once while maintaining data integrity
+
+### Discogs Integration
+- **OAuth Authentication:** Secure OAuth 1.0a authentication with Discogs API
+- **Album Search:** Search the Discogs database for album information and automatically populate fields
+- **Discogs Collection Sync:** Import albums directly from your Discogs collection
+- **API Rate Limiting:** Intelligent handling of Discogs API rate limits to ensure uninterrupted service
+
+### Wantlist Management
+- **Wantlist Screen:** Dedicated interface for managing albums you want to acquire
+- **Online/Offline Sync:** Synchronize your wantlist with Discogs while maintaining offline functionality
+- **Add to Collection:** Seamlessly move albums from wantlist to your main collection
+- **Smart Merging:** Intelligent conflict resolution when syncing online and offline wantlist data
+
+### Search & Organization
+- **Advanced Search:** Quickly find albums using comprehensive search functionality
+- **Filter Options:** Filter by medium (CD, Vinyl, Digital), genre, year, and digital availability
+- **Real-time Search:** Instant search results as you type
+- **Album Sorting:** Organize your collection with intelligent sorting options
+
+### User Experience
+- **Modern UI:** Clean, intuitive Material Design interface with consistent theming
+- **Auto-Save:** Automatic form data preservation to prevent data loss
+- **Toast Notifications:** Clear feedback for all user actions
+- **Accessibility Support:** Full accessibility features for inclusive usage
+- **Settings Management:** Comprehensive configuration options and preferences
 
 ## Screenshots
 
@@ -95,19 +128,172 @@ This will generate a `.deb` package, which you can install on any Debian-based s
 
 ## Usage
 
-Once installed, **MusicUp** can be launched from your system's application menu. You can add, edit, and manage your
-music collection easily from the user interface. Import or export your collection to/from JSON, CSV, or XML formats as
-needed.
+Once installed, **MusicUp** can be launched from your system's application menu. The application provides:
+
+### Getting Started
+1. **Main Collection:** Start by adding albums manually or importing from various formats
+2. **Discogs Integration:** Configure OAuth authentication in settings for enhanced features
+3. **Wantlist Management:** Use the dedicated wantlist screen to track desired albums
+4. **Search & Discovery:** Use the Discogs search to find and add albums with complete metadata
+
+### Key Workflows
+- **Manual Entry:** Add albums with comprehensive details and track information
+- **Folder Import:** Automatically extract album and track data from organized music folders
+- **Discogs Search:** Find albums in the Discogs database and import with full metadata
+- **Collection Sync:** Keep your local collection synchronized with your Discogs profile
+- **Data Management:** Export your collection for backup or sharing in multiple formats
+
+## Import/Export File Formats
+
+**MusicUp** supports importing and exporting your collection in multiple standardized formats:
+
+### 📄 **JSON Format** (Recommended)
+The native format with full feature support including tracks and metadata:
+
+```json
+[
+  {
+    "id": "unique_album_id",
+    "name": "Album Name",
+    "artist": "Artist Name",
+    "genre": "Rock",
+    "year": "2024",
+    "medium": "Vinyl",
+    "digital": true,
+    "tracks": [
+      {
+        "trackNumber": "01",
+        "title": "Song Title"
+      },
+      {
+        "trackNumber": "02", 
+        "title": "Another Song"
+      }
+    ]
+  }
+]
+```
+
+### 📊 **CSV Format** 
+Spreadsheet-compatible format supporting both basic and detailed album information:
+
+#### **Basic CSV Format:**
+```csv
+name,artist,genre,year,medium,digital
+"Album Name","Artist Name","Rock","2024","Vinyl","true"
+"Another Album","Another Artist","Jazz","2023","CD","false"
+```
+
+#### **Extended CSV Format with Tracks:**
+```csv
+name,artist,genre,year,medium,digital,tracks
+"Album Name","Artist Name","Rock","2024","Vinyl","true","01 - Song Title|02 - Another Song|03 - Final Track"
+"Another Album","Another Artist","Jazz","2023","CD","false","01 - Jazz Intro|02 - Main Theme"
+```
+
+**CSV Column Headers:**
+- `name` - Album title (required)
+- `artist` - Artist name (required) 
+- `genre` - Music genre (optional)
+- `year` - Release year (optional)
+- `medium` - Physical format: "Vinyl", "CD", "Digital", etc. (optional)
+- `digital` - Digital availability: "true" or "false" (optional)
+- `tracks` - Track listing separated by pipe (`|`) character (optional)
+  - Format: `"01 - Track Title|02 - Next Track|03 - Final Track"`
+  - Each track: `TrackNumber - TrackTitle`
+
+### 🗂️ **XML Format**
+Structured format for data exchange:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<albums>
+  <album>
+    <id>unique_album_id</id>
+    <name>Album Name</name>
+    <artist>Artist Name</artist>
+    <genre>Rock</genre>
+    <year>2024</year>
+    <medium>Vinyl</medium>
+    <digital>true</digital>
+    <tracks>
+      <track>
+        <trackNumber>01</trackNumber>
+        <title>Song Title</title>
+      </track>
+    </tracks>
+  </album>
+</albums>
+```
+
+### 📁 **Folder Import Requirements**
+For automatic folder-based import:
+
+```
+📁 Album Folder Name/
+  🎵 01 - Track Title.mp3
+  🎵 02 - Another Track.mp3  
+  🎵 03 - Third Track.mp3
+```
+
+**Requirements:**
+- **Folder Name** = Album name
+- **File Format:** `##` - `Track Title.mp3`
+- **Track Numbers:** Two digits (01, 02, 03...)
+- **Separator:** Space-dash-space (` - `)
+- **File Extension:** .mp3 files only
+
+### 💡 **Import Tips**
+- **JSON** provides complete data preservation with best track information support
+- **CSV** supports both basic album info and track listings (using pipe `|` separator)
+- **XML** works well for integration with other music management tools  
+- **Folder Import** automatically extracts track listings from organized music files
+- All formats support automatic duplicate detection during import
+- **Track Format**: Always use `TrackNumber - TrackTitle` pattern (e.g., `01 - Song Name`)
+- **CSV Tracks**: Use pipe character `|` to separate multiple tracks in one cell
 
 ## Testing
 
-You can run the tests for **MusicUp** using Flutter's built-in testing framework. To run all tests, use:
+**MusicUp** features comprehensive test coverage across multiple layers to ensure reliability and maintainability.
+
+### Test Coverage
+
+Our test suite includes:
+- **Service Layer Tests:** Critical business logic including wantlist sync, Discogs integration, and data persistence
+- **Widget Tests:** UI component testing for forms, album lists, and user interactions
+- **Integration Tests:** Complete user flows from adding albums to editing and deleting
+- **Error Handling Tests:** Comprehensive testing of edge cases and error scenarios
+
+### Running Tests
+
+Execute all tests using Flutter's built-in testing framework:
 
 ```bash
 flutter test
 ```
 
-This will execute all unit and widget tests available in the repository.
+To run specific test categories:
+
+```bash
+# Run service layer tests
+flutter test test/*_service_test.dart
+
+# Run widget tests
+flutter test test/*_widget_test.dart
+
+# Run integration tests
+flutter test test/integration_test.dart
+```
+
+### Test Structure
+
+- **Critical Services:** WantlistSyncService (online/offline sync logic, merge conflicts, API error handling)
+- **API Integration:** DiscogsService (OAuth authentication, API response parsing, rate limiting)
+- **Data Layer:** JsonService, ConfigManager, ImportExportService
+- **UI Components:** AlbumFormWidget, AlbumListWidget, SearchBarWidget
+- **Complete Flows:** Add → Edit → Delete album workflows with form validation
+
+The test coverage ensures robust functionality across all core features of the application.
 
 ## Motivation
 
@@ -116,12 +302,15 @@ I used a paid app that allowed scanning albums, but it often failed to find cert
 result, I decided to build **MusicUp**, focusing on ease of use and customization. Scanning is a feature I may consider
 adding in the future, but for now, manual input is still a reliable option.
 
-Currently, I have only tested the Linux desktop version, specifically on Linux Mint.
+**MusicUp** is currently available and tested on:
+- **Linux Desktop** (specifically tested on Linux Mint)
+- **Android** (mobile version available)
 
 ## Contributing
 
-Contributions are welcome! If you have ideas or improvements, feel free to fork the repository and submit a pull
-request. Make sure to follow best practices when contributing.
+**MusicUp** is currently developed as a personal project. While the source code is publicly visible for educational purposes, the project is not accepting external contributions at this time. 
+
+If you have suggestions or feedback, please feel free to contact the author directly.
 
 ## Project Background
 
@@ -133,26 +322,37 @@ As a result, I developed the mobile version of the software for my iPhone in Swi
 
 ### Future Plans
 
-1. A Kotlin version for Android.
-2. A Flutter version for Android, iOS, Windows, and Mac.
-3. Adding a scanner to load data from a database like CDDB.
+1. **iOS Version** - Flutter version for iPhone and iPad
+2. **Windows & macOS Desktop** - Native Flutter desktop applications
+3. **Enhanced Features**:
+   - Advanced statistics and analytics (listening habits, collection insights)
+   - Cloud synchronization options for multi-device access
+   - Barcode scanning for quick album identification
+   - Enhanced offline capabilities
 
 ## License
 
-**MusicUp** is licensed under the **GNU General Public License v3.0** - see
-the [LICENSE](https://www.gnu.org/licenses/gpl-3.0.html) file for details.
+**All Rights Reserved**
 
-### Key points of the GNU GPLv3:
+This project is proprietary software owned exclusively by the author.
 
-- **Freedom to use, modify, and distribute**: You are free to use, modify, and distribute this software, as long as you
-  adhere to the GPLv3 conditions.
-- **Copyleft**: Any modifications or derived works must also be distributed under the GPLv3 license.
-- **Source code availability**: If you distribute the software, you must make the full source code available, including
-  any modifications.
-- **Patent protection**: The license prevents any patent claims against users of the software.
-- **No "Tivoization"**: Hardware that uses GPLv3 software must allow installation of modified software by users.
+### Copyright Notice
 
-For more information, please refer to the [official GPLv3 license](https://www.gnu.org/licenses/gpl-3.0.html).
+© 2024 - All rights reserved. This software and its source code are the exclusive property of the author.
+
+### Usage Terms
+
+- **Code Ownership**: This code is publicly visible on GitHub as part of the author's portfolio
+- **No Usage Rights**: Viewing this code does not grant any rights to use, copy, modify, or distribute it
+- **Educational Purpose**: The code is available for viewing and learning purposes only
+- **No Forks/Downloads**: Please do not fork, download, or use this code in any way
+- **Portfolio Display**: This repository serves as a showcase of the author's development skills
+
+### Contact for Licensing
+
+If you are interested in licensing this software or any part of it, please contact the author directly.
+
+**Note**: This is a personal portfolio project. The code is public for demonstration purposes only - all rights remain with the original author.
 
 ## Contact
 
