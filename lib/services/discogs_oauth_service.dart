@@ -14,7 +14,7 @@ class DiscogsOAuthService {
 
   static const String _baseUrl = 'https://api.discogs.com';
   static const String _userAgent =
-      'MusicUp/1.3.1 +https://github.com/hiphopconnect/musicup';
+      'MusicUp/2.1.0 +https://github.com/hiphopconnect/musicup';
 
   String? _requestToken;
   String? _requestTokenSecret;

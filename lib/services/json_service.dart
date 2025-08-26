@@ -35,63 +35,80 @@ class JsonService {
     return await configManager.getWantlistFilePathOrDefault();
   }
 
-  // Load albums from JSON file
+  // Load albums from JSON file (without tracks for performance)
   Future<List<Album>> loadAlbums() async {
+    return _loadAlbums(loadTracks: false);
+  }
+
+  // Load single album with full tracks
+  Future<Album?> loadAlbumWithTracks(String albumId) async {
+    try {
+      final albums = await _loadAlbums(loadTracks: true);
+      return albums.firstWhere(
+        (album) => album.id == albumId,
+        orElse: () => throw Exception('Album not found'),
+      );
+    } catch (e) {
+      LoggerService.error('Album with tracks load', e);
+      return null;
+    }
+  }
+
+  // Internal method for loading albums with optional track loading
+  Future<List<Album>> _loadAlbums({bool loadTracks = true}) async {
     try {
       final filePath = await _getAlbumsFilePath();
-
       final file = File(filePath);
 
-      if (await file.exists()) {
-        final contents = await file.readAsString();
-
-        if (contents.trim().isEmpty) {
-          LoggerService.warning('Albums load', 'File is empty');
-          return [];
-        }
-
-        final List<dynamic> jsonList = json.decode(contents);
-        LoggerService.data('Albums loaded', jsonList.length, 'items');
-
-        return jsonList.map((albumMap) {
-          final Map<String, dynamic> albumJson =
-              Map<String, dynamic>.from(albumMap);
-
-          // Parse tracks
-          List<Track> tracks = [];
-          if (albumJson['tracks'] != null) {
-            final List<dynamic> tracksList = albumJson['tracks'];
-            tracks = tracksList.map((trackMap) {
-              final Map<String, dynamic> trackJson =
-                  Map<String, dynamic>.from(trackMap);
-              return Track(
-                trackNumber: trackJson['trackNumber']?.toString() ?? '1',
-                title: trackJson['title']?.toString() ?? 'Unknown Track',
-              );
-            }).toList();
-          }
-
-          return Album(
-            id: albumJson['id']?.toString() ??
-                DateTime.now().millisecondsSinceEpoch.toString(),
-            name: albumJson['name']?.toString() ?? '',
-            artist: albumJson['artist']?.toString() ?? '',
-            genre: albumJson['genre']?.toString() ?? '',
-            year: albumJson['year']?.toString() ?? '',
-            medium: albumJson['medium']?.toString() ?? 'Vinyl',
-            digital: albumJson['digital'] == true,
-            tracks: tracks,
-          );
-        }).toList();
-      } else {
+      if (!await file.exists()) {
         LoggerService.info('Albums load', 'File does not exist, creating empty file');
-
-        // Erstelle leere Datei automatisch (schön formatiert)
         await file.create(recursive: true);
         await file.writeAsString('[\n]\n');
-
         return [];
       }
+
+      final contents = await file.readAsString();
+      if (contents.trim().isEmpty) {
+        LoggerService.warning('Albums load', 'File is empty');
+        return [];
+      }
+
+      final List<dynamic> jsonList = json.decode(contents);
+      LoggerService.data('Albums loaded', jsonList.length, loadTracks ? 'items with tracks' : 'items metadata only');
+
+      // Use direct casting for better performance
+      final List<Album> albums = [];
+      for (final albumData in jsonList) {
+        final albumJson = albumData as Map<String, dynamic>;
+
+        // Only parse tracks if requested and available
+        final List<Track> tracks;
+        if (loadTracks && albumJson.containsKey('tracks') && albumJson['tracks'] != null) {
+          final tracksList = albumJson['tracks'] as List<dynamic>;
+          tracks = tracksList.map<Track>((trackData) {
+            final trackJson = trackData as Map<String, dynamic>;
+            return Track(
+              trackNumber: trackJson['trackNumber']?.toString() ?? '1',
+              title: trackJson['title']?.toString() ?? 'Unknown Track',
+            );
+          }).toList();
+        } else {
+          tracks = <Track>[];
+        }
+
+        albums.add(Album(
+          id: albumJson['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          name: albumJson['name']?.toString() ?? '',
+          artist: albumJson['artist']?.toString() ?? '',
+          genre: albumJson['genre']?.toString() ?? '',
+          year: albumJson['year']?.toString() ?? '',
+          medium: albumJson['medium']?.toString() ?? 'Vinyl',
+          digital: albumJson['digital'] == true,
+          tracks: tracks,
+        ));
+      }
+
+      return albums;
     } catch (e) {
       LoggerService.error('Albums load', e);
       return [];

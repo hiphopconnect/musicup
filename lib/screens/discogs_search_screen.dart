@@ -6,6 +6,7 @@ import 'package:music_up/services/discogs_album_service.dart';
 import 'package:music_up/services/discogs_service_unified.dart';
 import 'package:music_up/services/json_service.dart';
 import 'package:music_up/services/logger_service.dart';
+import 'package:music_up/services/toast_service.dart';
 import 'package:music_up/widgets/app_layout.dart';
 import 'package:music_up/widgets/discogs_dialogs.dart';
 import 'package:music_up/widgets/discogs_search_results_widget.dart';
@@ -101,21 +102,11 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
       await _albumService!.addToCollection(result);
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('"${result.title}" zur Sammlung hinzugefügt'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        ToastService.showSuccess(context, '"${result.title}" zur Sammlung hinzugefügt');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ToastService.showError(context, 'Fehler: $e');
       }
     }
   }
@@ -134,21 +125,11 @@ class DiscogsSearchScreenState extends State<DiscogsSearchScreen> {
       await _albumService!.addToWantlist(result);
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('"${result.title}" zur Wantlist hinzugefügt'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        ToastService.showSuccess(context, '"${result.title}" zur Wantlist hinzugefügt');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fehler: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ToastService.showError(context, 'Fehler: $e');
       }
     }
   }

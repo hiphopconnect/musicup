@@ -103,7 +103,7 @@ class ImportExportService {
     final builder = XmlBuilder();
     builder.processing('xml', 'version="1.0" encoding="UTF-8"');
     builder.element('MusicCollection', nest: () {
-      builder.attribute('version', '1.3.1');
+      builder.attribute('version', '2.1.0');
       builder.attribute('exported', DateTime.now().toIso8601String());
 
       builder.element('Albums', nest: () {

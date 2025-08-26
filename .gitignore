@@ -16,11 +16,33 @@ migrate_working_dir/
 *.iws
 .idea/
 
+# Build artifacts (except organized releases)
 *.apk
 *.aab
 *.deb
+*.exe
+*.dmg
+*.ipa
+!releases/**/*.apk
+!releases/**/*.aab
+!releases/**/*.deb
+!releases/**/*.exe
+!releases/**/*.dmg
+!releases/**/*.ipa
+
+# Sync and test files
 .sync.ffs_db
 TestExport_*
+
+# Backup files
+*_backup.*
+*_old.*
+*.bak
+*.backup
+
+# Temporary files
+*.tmp
+*.temp
 
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
@@ -50,6 +72,32 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-android/app/build/
 
+# Test coverage
+coverage/
+test/coverage/
+lcov.info
+
+# GitHub Workflows (optional - comment out if you want to track them)
+# .github/
+
+# Package directories
+releases/temp/
+releases/staging/
+
+# Local configuration files
+*.local
+.env.local
+.env
+
+# macOS/Windows specific files
+Thumbs.db
+
+# Windows specific  
+*.lnk
+desktop.ini
+
+package/
+ToDo.md
+releases/
 

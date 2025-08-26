@@ -4,17 +4,20 @@ import 'package:flutter/material.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/section_card.dart';
+import 'package:music_up/services/validation_service.dart';
 
 class TrackManagementWidget extends StatefulWidget {
   final List<Track> tracks;
   final ValueChanged<List<Track>> onTracksChanged;
   final ScrollController? scrollController;
+  final bool enableValidation;
 
   const TrackManagementWidget({
     super.key,
     required this.tracks,
     required this.onTracksChanged,
     this.scrollController,
+    this.enableValidation = true,
   });
 
   @override

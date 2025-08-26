@@ -14,7 +14,7 @@ class DiscogsServiceUnified {
 
   final String _baseUrl = 'https://api.discogs.com';
   final String _userAgent =
-      'MusicUp/1.3.1 +https://github.com/hiphopconnect/musicup';
+      'MusicUp/2.1.0 +https://github.com/hiphopconnect/musicup';
 
   DiscogsServiceUnified(this._configManager);
 

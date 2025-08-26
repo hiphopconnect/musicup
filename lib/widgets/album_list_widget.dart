@@ -3,6 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/theme/design_system.dart';
+import 'package:music_up/widgets/loading_widget.dart';
+import 'package:music_up/widgets/animated_widgets.dart';
+import 'package:music_up/widgets/responsive_widgets.dart';
+import 'package:music_up/services/accessibility_service.dart';
 
 class AlbumListWidget extends StatelessWidget {
   final List<Album> albums;
@@ -23,7 +27,7 @@ class AlbumListWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const SkeletonLoadingList(itemCount: 6);
     }
 
     if (albums.isEmpty) {
@@ -49,6 +53,8 @@ class AlbumListWidget extends StatelessWidget {
 
     return ListView.builder(
       itemCount: albums.length,
+      itemExtent: 80.0, // Fixed height für bessere Performance
+      cacheExtent: 400.0, // Weniger Items im Cache
       itemBuilder: (context, index) {
         final album = albums[index];
         return AlbumListTile(
@@ -60,6 +66,7 @@ class AlbumListWidget extends StatelessWidget {
       },
     );
   }
+
 }
 
 class AlbumListTile extends StatelessWidget {
@@ -83,30 +90,32 @@ class AlbumListTile extends StatelessWidget {
       color: const Color(0xFF2C2C2C), // Charcoal background
       child: ListTile(
         onTap: onTap,
-        leading: _buildAlbumIcon(),
+        leading: _buildSimpleIcon(),
         title: Text(
           album.name,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
+          overflow: TextOverflow.ellipsis,
         ),
         subtitle: Text(
           album.artist,
           style: TextStyle(color: Colors.grey[300]),
+          overflow: TextOverflow.ellipsis,
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.edit, color: Colors.white70),
+              icon: const Icon(Icons.edit, color: Colors.white70, size: 20),
               onPressed: onEdit,
-              tooltip: 'Album bearbeiten',
+              tooltip: 'Bearbeiten',
             ),
             IconButton(
-              icon: const Icon(Icons.delete, color: Colors.white70),
+              icon: const Icon(Icons.delete, color: Colors.white70, size: 20),
               onPressed: onDelete,
-              tooltip: 'Album löschen',
+              tooltip: 'Löschen',
             ),
           ],
         ),
@@ -114,36 +123,33 @@ class AlbumListTile extends StatelessWidget {
     );
   }
 
-  Widget _buildAlbumIcon() {
-    IconData iconData;
-    Color iconColor;
+  Widget _buildSimpleIcon() {
+    final IconData iconData;
+    final Color iconColor;
 
     switch (album.medium) {
       case 'Vinyl':
         iconData = Icons.album;
-        iconColor = const Color(0xFF2E4F2E); // Dark green
+        iconColor = const Color(0xFF2E4F2E);
         break;
       case 'CD':
         iconData = Icons.album;
-        iconColor = const Color(0xFF556B2F); // Olive green
+        iconColor = const Color(0xFF556B2F);
         break;
       case 'Cassette':
         iconData = Icons.library_music;
-        iconColor = const Color(0xFF2C2C2C); // Charcoal
+        iconColor = const Color(0xFF2C2C2C);
         break;
       case 'Digital':
         iconData = Icons.cloud;
-        iconColor = Colors.grey[600]!;
+        iconColor = Colors.grey;
         break;
       default:
         iconData = Icons.music_note;
-        iconColor = Colors.grey[500]!;
+        iconColor = Colors.grey;
     }
 
-    return CircleAvatar(
-      backgroundColor: iconColor.withValues(alpha: 0.2),
-      child: Icon(iconData, color: iconColor),
-    );
+    return Icon(iconData, color: iconColor, size: 24);
   }
-
 }
+

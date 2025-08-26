@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/services/folder_import_service.dart';
 import 'package:music_up/services/logger_service.dart';
+import 'package:music_up/services/validation_service.dart';
+import 'package:music_up/services/auto_save_service.dart';
+import 'package:music_up/services/toast_service.dart';
+import 'package:music_up/services/accessibility_service.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/album_form_widget.dart';
 import 'package:music_up/widgets/app_layout.dart';
@@ -23,20 +27,25 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
   final TextEditingController _genreController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FolderImportService _folderImportService = FolderImportService();
+  final AutoSaveService _autoSaveService = AutoSaveService();
 
   String? _selectedYear;
   String? _selectedMedium;
   bool? _isDigital;
   List<Track> _tracks = [];
+  bool _hasUnsavedChanges = false;
 
   @override
   void initState() {
     super.initState();
     _initializeWithEmptyTrack();
+    _setupAutoSave();
+    _loadDraftIfExists();
   }
 
   @override
   void dispose() {
+    _autoSaveService.dispose();
     _nameController.dispose();
     _artistController.dispose();
     _genreController.dispose();
@@ -46,6 +55,89 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
 
   void _initializeWithEmptyTrack() {
     _tracks = [Track(trackNumber: '01', title: '')];
+  }
+
+  void _setupAutoSave() {
+    // Auto-save bei Text-Änderungen
+    _nameController.addListener(_triggerAutoSave);
+    _artistController.addListener(_triggerAutoSave);
+    _genreController.addListener(_triggerAutoSave);
+  }
+
+  void _triggerAutoSave() {
+    setState(() {
+      _hasUnsavedChanges = true;
+    });
+
+    final formData = {
+      'name': _nameController.text,
+      'artist': _artistController.text,
+      'genre': _genreController.text,
+      'year': _selectedYear,
+      'medium': _selectedMedium,
+      'digital': _isDigital,
+      'tracks': _tracks.map((t) => {'trackNumber': t.trackNumber, 'title': t.title}).toList(),
+    };
+
+    _autoSaveService.saveFormData('add_album', formData);
+  }
+
+  Future<void> _loadDraftIfExists() async {
+    final hasDraft = await _autoSaveService.hasDraftData('add_album');
+    if (hasDraft && mounted) {
+      final shouldLoad = await _showLoadDraftDialog();
+      if (shouldLoad == true) {
+        await _loadDraft();
+      }
+    }
+  }
+
+  Future<bool?> _showLoadDraftDialog() {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Entwurf gefunden'),
+        content: const Text('Es wurde ein gespeicherter Entwurf gefunden. Möchten Sie ihn laden?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Nein'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Ja, laden'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loadDraft() async {
+    final formData = await _autoSaveService.loadFormData('add_album');
+    if (formData != null && mounted) {
+      setState(() {
+        _nameController.text = formData['name'] ?? '';
+        _artistController.text = formData['artist'] ?? '';
+        _genreController.text = formData['genre'] ?? '';
+        _selectedYear = formData['year'];
+        _selectedMedium = formData['medium'];
+        _isDigital = formData['digital'];
+        
+        final tracksData = formData['tracks'] as List<dynamic>? ?? [];
+        _tracks = tracksData.map((t) => Track(
+          trackNumber: t['trackNumber'] ?? '',
+          title: t['title'] ?? '',
+        )).toList();
+        
+        if (_tracks.isEmpty) {
+          _initializeWithEmptyTrack();
+        }
+        
+        _hasUnsavedChanges = true;
+      });
+      
+      ToastService.showInfo(context, 'Entwurf geladen');
+    }
   }
 
   Future<bool> _onWillPop() async {
@@ -113,20 +205,27 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
   }
 
   void _saveAlbum([Album? prefilledAlbum]) {
-    if (!AlbumFormValidator.isFormValid(
-      albumName: _nameController.text,
-      artist: _artistController.text,
-    )) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Bitte Album-Name und Künstler eingeben")),
-      );
-      return;
-    }
-
-    if (_selectedMedium == null || _isDigital == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Bitte Medium und Digital-Status auswählen")),
-      );
+    // Album-Name und Künstler sind PFLICHT, Rest optional
+    final validationErrors = <String>[];
+    
+    final nameError = ValidationService.validateAlbumName(_nameController.text);
+    if (nameError != null) validationErrors.add(nameError);
+    
+    final artistError = ValidationService.validateArtistName(_artistController.text);
+    if (artistError != null) validationErrors.add(artistError);
+    
+    final genreError = ValidationService.validateGenre(_genreController.text);
+    if (genreError != null) validationErrors.add(genreError);
+    
+    final yearError = ValidationService.validateYear(_selectedYear);
+    if (yearError != null) validationErrors.add(yearError);
+    
+    final mediumError = ValidationService.validateMedium(_selectedMedium);
+    if (mediumError != null) validationErrors.add(mediumError);
+    
+    if (validationErrors.isNotEmpty) {
+      ToastService.showError(context, validationErrors.first);
+      AccessibilityAnnouncer.validationError(context, validationErrors.first);
       return;
     }
 
@@ -134,18 +233,24 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
     Album newAlbum = prefilledAlbum ??
         Album(
           id: uuid.v4(),
-          name: _nameController.text.trim(),
-          artist: _artistController.text.trim(),
-          genre: _genreController.text.trim().isEmpty 
-              ? 'Unbekannt' 
-              : _genreController.text.trim(),
-          year: _selectedYear ?? 'Unbekannt',
-          medium: _selectedMedium!,
-          digital: _isDigital!,
+          name: _nameController.text.trim(), // Pflicht-Felder wie eingegeben
+          artist: _artistController.text.trim(), // Pflicht-Felder wie eingegeben
+          genre: ValidationService.getGenreOrDefault(_genreController.text),
+          year: ValidationService.getYearOrDefault(_selectedYear),
+          medium: ValidationService.getMediumOrDefault(_selectedMedium),
+          digital: ValidationService.getDigitalOrDefault(_isDigital),
           tracks: _tracks,
         );
     
+    // Draft löschen nach erfolgreichem Speichern
+    _autoSaveService.clearFormData('add_album');
+    setState(() {
+      _hasUnsavedChanges = false;
+    });
+    
     LoggerService.info('Album created', '${newAlbum.name} by ${newAlbum.artist}');
+    ToastService.showSuccess(context, 'Album "${newAlbum.name}" erfolgreich hinzugefügt');
+    AccessibilityAnnouncer.albumAdded(context, newAlbum.name, newAlbum.artist);
     Navigator.pop(context, newAlbum);
   }
 

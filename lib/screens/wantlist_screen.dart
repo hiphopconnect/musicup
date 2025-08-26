@@ -9,6 +9,7 @@ import 'package:music_up/services/discogs_service_unified.dart';
 import 'package:music_up/services/json_service.dart';
 import 'package:music_up/services/logger_service.dart';
 import 'package:music_up/services/wantlist_sync_service.dart';
+import 'package:music_up/widgets/animated_widgets.dart';
 import 'package:music_up/widgets/app_layout.dart';
 import 'package:music_up/widgets/search_bar_widget.dart';
 import 'package:music_up/widgets/section_card.dart';
@@ -99,8 +100,9 @@ class WantlistScreenState extends State<WantlistScreen> {
   Future<void> _viewAlbum(Album album) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => AlbumDetailScreen(album: album),
+      SmoothPageRoute(
+        page: AlbumDetailScreen(album: album),
+        routeName: '/album-detail',
       ),
     );
   }
@@ -177,11 +179,12 @@ class WantlistScreenState extends State<WantlistScreen> {
   Future<void> _addWantedAlbum() async {
     final result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (context) => AddWantedAlbumScreen(
+      SmoothPageRoute<bool>(
+        page: AddWantedAlbumScreen(
           jsonService: _jsonService,
           configManager: widget.configManager,
         ),
+        routeName: '/add-wanted-album',
       ),
     );
 

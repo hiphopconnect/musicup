@@ -75,10 +75,10 @@ class _AppInfoWidgetState extends State<AppInfoWidget> {
         _buildInfoRow('Maintainer', 'Michael Milke (Nobo)'),
         _buildInfoRow('Email', 'nobo_code@posteo.de'),
         _buildInfoRow('Repository', 'github.com/hiphopconnect/musicup'),
-        _buildInfoRow('Lizenz', 'Open Source'),
+        _buildInfoRow('Lizenz', 'Proprietary Software'),
         const SizedBox(height: DS.sm),
         const Text(
-          'MusicUp ist ein Open-Source Musik-Verwaltungstool für Linux, entwickelt mit Flutter.',
+          'MusicUp ist ein proprietäres Musik-Verwaltungstool für Linux und Android, entwickelt mit Flutter.',
           style: TextStyle(fontStyle: FontStyle.italic),
         ),
       ],

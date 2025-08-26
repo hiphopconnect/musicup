@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/theme/design_system.dart';
+import 'package:music_up/widgets/loading_widget.dart';
+import 'package:music_up/widgets/animated_widgets.dart';
 
 class WantlistItemsWidget extends StatelessWidget {
   final List<Album> albums;
@@ -25,16 +27,7 @@ class WantlistItemsWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: DS.md),
-            Text('Wantlist wird geladen...'),
-          ],
-        ),
-      );
+      return const LoadingWidget(message: 'Wantlist wird geladen...');
     }
 
     if (albums.isEmpty) {
@@ -62,11 +55,14 @@ class WantlistItemsWidget extends StatelessWidget {
       itemCount: albums.length,
       itemBuilder: (context, index) {
         final album = albums[index];
-        return WantlistItemCard(
-          album: album,
-          onTap: () => onViewAlbum(album),
-          onAddToCollection: () => onAddToCollection(album),
-          onDelete: () => onDeleteFromWantlist(album),
+        return FadeInListItem(
+          index: index,
+          child: WantlistItemCard(
+            album: album,
+            onTap: () => onViewAlbum(album),
+            onAddToCollection: () => onAddToCollection(album),
+            onDelete: () => onDeleteFromWantlist(album),
+          ),
         );
       },
     );

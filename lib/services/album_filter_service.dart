@@ -25,8 +25,13 @@ class AlbumFilterService {
             matchesSearch = album.artist.toLowerCase().contains(query);
             break;
           case 'Song':
-            matchesSearch = album.tracks.any((track) =>
-                track.title.toLowerCase().contains(query));
+            // Skip song search if no tracks loaded (for performance)
+            if (album.tracks.isEmpty) {
+              matchesSearch = false;
+            } else {
+              matchesSearch = album.tracks.any((track) =>
+                  track.title.toLowerCase().contains(query));
+            }
             break;
         }
 
@@ -121,7 +126,7 @@ class AlbumFilterService {
   }
 
   List<String> getSearchCategories() {
-    return ['Album', 'Artist', 'Song'];
+    return ['Album', 'Artist']; // Song search deaktiviert für Performance
   }
 
   List<String> getDigitalFilterOptions() {

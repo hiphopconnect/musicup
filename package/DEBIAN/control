@@ -1,9 +1,9 @@
 Package: music-up
-Version: 1.3.1-5
+Version: 2.0.1-5
 Section: base
 Priority: optional
 Architecture: amd64
 Maintainer: Michael Milke (Nobo) <nobo_code@posteo.de>
 Description: MusicUp - A Music Management Tool for Linux
-License: GPL-3.0
+License: Proprietary
 Homepage: https://github.com/hiphopconnect/musicup/

@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/theme/design_system.dart';
+import 'package:music_up/widgets/loading_widget.dart';
+import 'package:music_up/widgets/animated_widgets.dart';
 
 class DiscogsSearchResultsWidget extends StatelessWidget {
   final List<DiscogsSearchResult> results;
@@ -29,10 +31,7 @@ class DiscogsSearchResultsWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Padding(
-        padding: EdgeInsets.all(DS.lg),
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return const LoadingWidget(message: 'Suche läuft...');
     }
 
     if (results.isEmpty) {
@@ -57,11 +56,14 @@ class DiscogsSearchResultsWidget extends StatelessWidget {
       itemCount: results.length,
       itemBuilder: (context, index) {
         final result = results[index];
-        return _SearchResultCard(
-          result: result,
-          onTap: () => onResultTap?.call(result),
-          onAddToCollection: () => onAddToCollectionTap?.call(result),
-          onAddToWantlist: () => onAddToWantlistTap?.call(result),
+        return FadeInListItem(
+          index: index,
+          child: _SearchResultCard(
+            result: result,
+            onTap: () => onResultTap?.call(result),
+            onAddToCollection: () => onAddToCollectionTap?.call(result),
+            onAddToWantlist: () => onAddToWantlistTap?.call(result),
+          ),
         );
       },
     );

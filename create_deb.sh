@@ -108,7 +108,7 @@ VERSION_DEB=$(get_deb_version)
 ARCH="amd64"
 MAINTAINER="Michael Milke (Nobo) <nobo_code@posteo.de>"
 DESCRIPTION="MusicUp - A Music Management Tool for Linux"
-LICENSE="GPL-3.0"
+LICENSE="Proprietary"
 REPOSITORY="https://github.com/hiphopconnect/musicup/"
 
 echo -e "${GREEN}Detected Flutter Version for Debian Package: $VERSION_DEB${NC}"

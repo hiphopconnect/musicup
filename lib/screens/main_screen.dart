@@ -15,6 +15,7 @@ import 'package:music_up/widgets/album_filters_widget.dart';
 import 'package:music_up/widgets/album_list_widget.dart';
 import 'package:music_up/widgets/app_layout.dart';
 import 'package:music_up/widgets/counter_bar.dart';
+import 'package:music_up/widgets/responsive_widgets.dart';
 
 class MainScreen extends StatefulWidget {
   final JsonService jsonService;
@@ -203,7 +204,10 @@ class MainScreenState extends State<MainScreen> {
     final editedAlbum = await Navigator.push<Album>(
       context,
       MaterialPageRoute(
-        builder: (context) => AlbumDetailScreen(album: album),
+        builder: (context) => AlbumDetailScreen(
+          album: album,
+          jsonService: widget.jsonService,
+        ),
       ),
     );
 
@@ -320,42 +324,32 @@ class MainScreenState extends State<MainScreen> {
       ],
       body: Column(
         children: [
-          // Upper controls section (scrollable if needed)
-          Flexible(
-            flex: 0,
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  // Counter Bar
-                  CounterBar(
-                    vinyl: _counts['vinyl'] ?? 0,
-                    cd: _counts['cd'] ?? 0,
-                    cassette: _counts['cassette'] ?? 0,
-                    digitalMedium: _counts['digital'] ?? 0,
-                    digitalYes: _counts['digitalYes'] ?? 0,
-                    digitalNo: _counts['digitalNo'] ?? 0,
-                  ),
+          // Counter Bar
+          CounterBar(
+            vinyl: _counts['vinyl'] ?? 0,
+            cd: _counts['cd'] ?? 0,
+            cassette: _counts['cassette'] ?? 0,
+            digitalMedium: _counts['digital'] ?? 0,
+            digitalYes: _counts['digitalYes'] ?? 0,
+            digitalNo: _counts['digitalNo'] ?? 0,
+          ),
 
-                  // Filter Controls
-                  AlbumFiltersWidget(
-                    mediumFilters: _mediumFilters,
-                    digitalFilter: _digitalFilter,
-                    isAscending: _isAscending,
-                    onMediumFilterChanged: _onMediumFilterChanged,
-                    onDigitalFilterChanged: _onDigitalFilterChanged,
-                    onToggleSortOrder: _toggleSortOrder,
-                    onResetFilters: _resetFilters,
-                  ),
+          // Filter Controls
+          AlbumFiltersWidget(
+            mediumFilters: _mediumFilters,
+            digitalFilter: _digitalFilter,
+            isAscending: _isAscending,
+            onMediumFilterChanged: _onMediumFilterChanged,
+            onDigitalFilterChanged: _onDigitalFilterChanged,
+            onToggleSortOrder: _toggleSortOrder,
+            onResetFilters: _resetFilters,
+          ),
 
-                  // Search Bar
-                  AlbumSearchWidget(
-                    searchController: _searchController,
-                    searchCategory: _searchCategory,
-                    onSearchCategoryChanged: _onSearchCategoryChanged,
-                  ),
-                ],
-              ),
-            ),
+          // Search Bar
+          AlbumSearchWidget(
+            searchController: _searchController,
+            searchCategory: _searchCategory,
+            onSearchCategoryChanged: _onSearchCategoryChanged,
           ),
 
           // Albums List (takes remaining space)

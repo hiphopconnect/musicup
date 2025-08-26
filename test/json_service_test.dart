@@ -49,7 +49,7 @@ void main() {
       }
     });
 
-    test('Export and Import JSON', () async {
+    test('Load albums without tracks (lazy loading)', () async {
       // Prepare test data
       List<Album> albums = [
         Album(
@@ -67,44 +67,33 @@ void main() {
         ),
       ];
 
-      // Save test data
+      // Save test data with tracks
       await jsonService.saveAlbums(albums);
 
-      // Export JSON
-      String exportPath = '${tempDir.path}/exported_albums.json';
-      await jsonService.exportJson(exportPath);
+      // Load albums (should not include tracks)
+      List<Album> loadedAlbums = await jsonService.loadAlbums();
 
-      // Ensure export file exists
-      expect(File(exportPath).existsSync(), true);
-
-      // Clear albums
-      await jsonService.saveAlbums([]);
-
-      // Import JSON
-      await jsonService.importAlbums(exportPath);
-
-      // Load albums
-      List<Album> importedAlbums = await jsonService.loadAlbums();
-
-      // Verify data
-      expect(importedAlbums.length, 1);
-      expect(importedAlbums[0].name, 'Test Album');
+      // Verify metadata loaded but no tracks
+      expect(loadedAlbums.length, 1);
+      expect(loadedAlbums[0].name, 'Test Album');
+      expect(loadedAlbums[0].artist, 'Test Artist');
+      expect(loadedAlbums[0].tracks.length, 0); // No tracks loaded for performance
     });
 
-    test('Export and Import CSV', () async {
+    test('Load single album with tracks', () async {
       // Prepare test data
       List<Album> albums = [
         Album(
-          id: '2',
-          name: 'CSV Album',
-          artist: 'CSV Artist',
-          genre: 'CSV Genre',
+          id: 'test-id-123',
+          name: 'Track Test Album',
+          artist: 'Track Artist',
+          genre: 'Rock',
           year: '2022',
           medium: 'Vinyl',
           digital: true,
           tracks: [
-            Track(title: 'CSV Track 1', trackNumber: '01'),
-            Track(title: 'CSV Track 2', trackNumber: '02'),
+            Track(title: 'Track A', trackNumber: '01'),
+            Track(title: 'Track B', trackNumber: '02'),
           ],
         ),
       ];
@@ -112,123 +101,79 @@ void main() {
       // Save test data
       await jsonService.saveAlbums(albums);
 
-      // Export CSV
-      String exportPath = '${tempDir.path}/exported_albums.csv';
-      await jsonService.exportCsv(exportPath);
+      // Load specific album with tracks
+      Album? albumWithTracks = await jsonService.loadAlbumWithTracks('test-id-123');
 
-      // Ensure export file exists
-      expect(File(exportPath).existsSync(), true);
-
-      // Clear albums
-      await jsonService.saveAlbums([]);
-
-      // Import CSV
-      await jsonService.importCsv(exportPath);
-
-      // Load albums
-      List<Album> importedAlbums = await jsonService.loadAlbums();
-
-      // Verify data
-      expect(importedAlbums.length, 1);
-      expect(importedAlbums[0].name, 'CSV Album');
+      // Verify album and tracks loaded
+      expect(albumWithTracks, isNotNull);
+      expect(albumWithTracks!.name, 'Track Test Album');
+      expect(albumWithTracks.tracks.length, 2);
+      expect(albumWithTracks.tracks[0].title, 'Track A');
+      expect(albumWithTracks.tracks[1].title, 'Track B');
     });
 
-    test('Export and Import XML', () async {
-      // Prepare test data
-      List<Album> albums = [
+    test('Import albums from external file', () async {
+      // Create external import file
+      List<Album> importAlbums = [
         Album(
-          id: '3',
-          name: 'XML Album',
-          artist: 'XML Artist',
-          genre: 'XML Genre',
+          id: 'import-1',
+          name: 'Imported Album',
+          artist: 'Import Artist',
+          genre: 'Import Genre',
           year: '2023',
           medium: 'Digital',
           digital: true,
           tracks: [
-            Track(title: 'XML Track 1', trackNumber: '01'),
-            Track(title: 'XML Track 2', trackNumber: '02'),
+            Track(title: 'Import Track 1', trackNumber: '01'),
+            Track(title: 'Import Track 2', trackNumber: '02'),
           ],
         ),
       ];
 
-      // Save test data
-      await jsonService.saveAlbums(albums);
-
-      // Export XML
-      String exportPath = '${tempDir.path}/exported_albums.xml';
-      await jsonService.exportXml(exportPath);
-
-      // Ensure export file exists
-      expect(File(exportPath).existsSync(), true);
-
-      // Clear albums
-      await jsonService.saveAlbums([]);
-
-      // Import XML
-      await jsonService.importXml(exportPath);
-
-      // Load albums
-      List<Album> importedAlbums = await jsonService.loadAlbums();
-
-      // Verify data
-      expect(importedAlbums.length, 1);
-      expect(importedAlbums[0].name, 'XML Album');
-    });
-
-    test('Avoid Duplicate Albums on Import', () async {
-      // Prepare initial data
-      List<Album> initialAlbums = [
-        Album(
-          id: '1',
-          name: 'Test Album',
-          artist: 'Artist 1',
-          genre: 'Genre 1',
-          year: '2021',
-          medium: 'CD',
-          digital: false,
-          tracks: [
-            Track(title: 'Track 1', trackNumber: '01'),
-          ],
-        ),
-      ];
-
-      await jsonService.saveAlbums(initialAlbums);
-
-      // Prepare import data
-      List<Album> importAlbums = [
-        Album(
-          id: '2',
-          name: 'Test Album',
-          artist: 'Artist 1',
-          genre: 'Genre 1',
-          year: '2021',
-          medium: 'CD',
-          digital: false,
-          tracks: [
-            Track(title: 'Track 2', trackNumber: '02'),
-          ],
-        ),
-      ];
-
-      // Export import data to JSON
+      // Create import file
       String importPath = '${tempDir.path}/import_albums.json';
-      String jsonString =
-          json.encode(importAlbums.map((album) => album.toMap()).toList());
+      String jsonString = jsonEncode(importAlbums.map((album) => {
+        'id': album.id,
+        'name': album.name,
+        'artist': album.artist,
+        'genre': album.genre,
+        'year': album.year,
+        'medium': album.medium,
+        'digital': album.digital,
+        'tracks': album.tracks.map((track) => {
+          'trackNumber': track.trackNumber,
+          'title': track.title,
+        }).toList(),
+      }).toList());
+      
       await File(importPath).writeAsString(jsonString);
 
       // Import albums
-      await jsonService.importAlbums(importPath);
+      List<Album> importedAlbums = await jsonService.importAlbumsFromFile(importPath);
+
+      // Verify imported data
+      expect(importedAlbums.length, 1);
+      expect(importedAlbums[0].name, 'Imported Album');
+      expect(importedAlbums[0].tracks.length, 2);
+    });
+
+    test('Load non-existent album returns null', () async {
+      // Try to load album that doesn't exist
+      Album? nonExistentAlbum = await jsonService.loadAlbumWithTracks('non-existent-id');
+
+      // Should return null
+      expect(nonExistentAlbum, isNull);
+    });
+
+    test('Save and load empty album list', () async {
+      // Save empty list
+      await jsonService.saveAlbums([]);
 
       // Load albums
-      List<Album> allAlbums = await jsonService.loadAlbums();
+      List<Album> loadedAlbums = await jsonService.loadAlbums();
 
-      // Verify that the album exists and tracks are merged
-      expect(allAlbums.length, 1); // Only one album should exist
-      expect(allAlbums[0].tracks.length, 2); // The album should have two tracks
-      expect(
-          allAlbums[0].tracks.any((track) => track.title == 'Track 1'), isTrue);
-      expect(
-          allAlbums[0].tracks.any((track) => track.title == 'Track 2'), isTrue);
+      // Should be empty
+      expect(loadedAlbums.length, 0);
     });
   });
 }

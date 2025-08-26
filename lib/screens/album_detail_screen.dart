@@ -5,16 +5,60 @@ import 'package:music_up/models/album_model.dart';
 import 'package:music_up/screens/edit_album_screen.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/app_layout.dart';
+import 'package:music_up/services/json_service.dart';
 
-class AlbumDetailScreen extends StatelessWidget {
+class AlbumDetailScreen extends StatefulWidget {
   final Album album;
+  final JsonService? jsonService;
 
-  const AlbumDetailScreen({super.key, required this.album});
+  const AlbumDetailScreen({super.key, required this.album, this.jsonService});
+
+  @override
+  State<AlbumDetailScreen> createState() => _AlbumDetailScreenState();
+}
+
+class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
+  Album? _albumWithTracks;
+  bool _isLoadingTracks = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTracksIfNeeded();
+  }
+
+  Future<void> _loadTracksIfNeeded() async {
+    if (widget.album.tracks.isNotEmpty || widget.jsonService == null) {
+      _albumWithTracks = widget.album;
+      return;
+    }
+
+    setState(() => _isLoadingTracks = true);
+    
+    try {
+      final albumWithTracks = await widget.jsonService!.loadAlbumWithTracks(widget.album.id);
+      if (mounted) {
+        setState(() {
+          _albumWithTracks = albumWithTracks ?? widget.album;
+          _isLoadingTracks = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _albumWithTracks = widget.album;
+          _isLoadingTracks = false;
+        });
+      }
+    }
+  }
+
+  Album get album => _albumWithTracks ?? widget.album;
 
   @override
   Widget build(BuildContext context) {
     return AppLayout(
-      title: album.name,
+      title: widget.album.name,
       appBarColor: const Color(0xFF2C2C2C), // Charcoal
       actions: [
         IconButton(
@@ -153,6 +197,29 @@ class AlbumDetailScreen extends StatelessWidget {
   }
 
   Widget _buildTracksList() {
+    if (_isLoadingTracks) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(DS.md),
+          child: Column(
+            children: [
+              const Text(
+                'Trackliste',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: DS.md),
+              const CircularProgressIndicator(),
+              const SizedBox(height: DS.sm),
+              Text(
+                'Tracks werden geladen...',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
     if (album.tracks.isEmpty) {
       return Card(
         child: Padding(
