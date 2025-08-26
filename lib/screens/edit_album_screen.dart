@@ -2,6 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:music_up/models/album_model.dart';
+import 'package:music_up/services/album_edit_service.dart';
+import 'package:music_up/theme/design_system.dart';
+import 'package:music_up/widgets/app_layout.dart';
+import 'package:music_up/widgets/edit_album_form_widget.dart';
+import 'package:music_up/widgets/track_management_widget.dart';
 
 class EditAlbumScreen extends StatefulWidget {
   final Album album;
@@ -13,334 +18,239 @@ class EditAlbumScreen extends StatefulWidget {
 }
 
 class EditAlbumScreenState extends State<EditAlbumScreen> {
-  late TextEditingController nameController;
-  late TextEditingController artistController;
-  late TextEditingController genreController;
-  String? selectedMedium;
-  bool? isDigital;
-  String? selectedYear;
-  List<String> years = [];
+  late TextEditingController _nameController;
+  late TextEditingController _artistController;
+  late TextEditingController _genreController;
   final ScrollController _scrollController = ScrollController();
 
-  // Copy of the album and tracks
-  late Album editedAlbum;
-  List<Track> tracks = [];
-  List<TextEditingController> _trackTitleControllers = [];
+  late AlbumEditService _editService;
+  late Album _originalAlbum;
+
+  String? _selectedMedium;
+  bool? _isDigital;
+  String? _selectedYear;
+  List<Track> _tracks = [];
 
   @override
   void initState() {
     super.initState();
-
-    // Create a copy of the album
-    editedAlbum = Album(
-      id: widget.album.id,
-      name: widget.album.name,
-      artist: widget.album.artist,
-      genre: widget.album.genre,
-      year: widget.album.year,
-      medium: widget.album.medium,
-      digital: widget.album.digital,
-      tracks: widget.album.tracks
-          .map((track) => Track(
-                title: track.title,
-                trackNumber: track.trackNumber,
-              ))
-          .toList(),
-    );
-
-    nameController = TextEditingController(text: editedAlbum.name);
-    artistController = TextEditingController(text: editedAlbum.artist);
-    genreController = TextEditingController(text: editedAlbum.genre);
-    selectedMedium = editedAlbum.medium;
-    isDigital = editedAlbum.digital;
-    selectedYear = editedAlbum.year;
-
-    final currentYear = DateTime.now().year;
-    years = List.generate(100, (index) => (currentYear - index).toString());
-
-    tracks = editedAlbum.tracks;
-    _initializeTrackControllers();
-  }
-
-  void _initializeTrackControllers() {
-    _trackTitleControllers = tracks.map((track) {
-      return TextEditingController(text: track.title);
-    }).toList();
-  }
-
-  void _updateTrackControllers() {
-    for (var controller in _trackTitleControllers) {
-      controller.dispose();
-    }
-    _trackTitleControllers = tracks.map((track) {
-      return TextEditingController(text: track.title);
-    }).toList();
+    
+    _editService = AlbumEditService();
+    _originalAlbum = widget.album;
+    
+    _initializeFormData();
   }
 
   @override
   void dispose() {
-    nameController.dispose();
-    artistController.dispose();
-    genreController.dispose();
+    _nameController.dispose();
+    _artistController.dispose();
+    _genreController.dispose();
     _scrollController.dispose();
-    for (var controller in _trackTitleControllers) {
-      controller.dispose();
-    }
     super.dispose();
   }
 
+  void _initializeFormData() {
+    _nameController = TextEditingController(text: _originalAlbum.name);
+    _artistController = TextEditingController(text: _originalAlbum.artist);
+    _genreController = TextEditingController(text: _originalAlbum.genre);
+    _selectedMedium = _originalAlbum.medium;
+    _isDigital = _originalAlbum.digital;
+    _selectedYear = _originalAlbum.year;
+    _tracks = _editService.createEditableCopy(_originalAlbum).tracks;
+  }
+
   Future<bool> _onWillPop() async {
-    bool shouldPop = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Save changes?'),
-            content: const Text(
-                'Do you want to save changes before leaving the page?'),
-            actions: [
-              TextButton(
-                child: const Text('Cancel'),
-                onPressed: () => Navigator.of(context).pop(false),
-              ),
-              TextButton(
-                child: const Text('No'),
-                onPressed: () {
-                  Navigator.of(context).pop(true);
-                  Navigator.pop(context, null); // No changes saved
-                },
-              ),
-              TextButton(
-                child: const Text('Yes'),
-                onPressed: () {
-                  Navigator.of(context).pop(true);
-                  _saveAlbum();
-                },
-              ),
-            ],
+    if (!_hasUnsavedChanges()) {
+      return true; // No changes, can pop
+    }
+
+    final shouldDiscard = await _showUnsavedChangesDialog();
+    return shouldDiscard ?? false;
+  }
+
+  bool _hasUnsavedChanges() {
+    return _editService.hasChanges(
+      original: _originalAlbum,
+      name: _nameController.text,
+      artist: _artistController.text,
+      genre: _genreController.text,
+      selectedYear: _selectedYear,
+      selectedMedium: _selectedMedium,
+      isDigital: _isDigital,
+      tracks: _tracks,
+    );
+  }
+
+  Future<bool?> _showUnsavedChangesDialog() async {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Ungespeicherte Änderungen'),
+          content: const Text(
+            'Sie haben ungespeicherte Änderungen. Möchten Sie diese verwerfen?',
           ),
-        ) ??
-        false;
-    return shouldPop;
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Bearbeitung fortsetzen'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Änderungen verwerfen'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _saveAlbum() {
-    if (selectedMedium == null || isDigital == null || selectedYear == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select all fields")),
-      );
-    } else {
-      Album updatedAlbum = editedAlbum.copyWith(
-        name: nameController.text,
-        artist: artistController.text,
-        genre: genreController.text,
-        year: selectedYear!,
-        medium: selectedMedium!,
-        digital: isDigital!,
-        tracks: tracks,
-      );
-      Navigator.pop(context, updatedAlbum);
+    final validationErrors = _editService.validateAlbumEdit(
+      name: _nameController.text,
+      artist: _artistController.text,
+      selectedMedium: _selectedMedium,
+      isDigital: _isDigital,
+      tracks: _tracks,
+    );
+
+    if (validationErrors.isNotEmpty) {
+      _showValidationErrors(validationErrors);
+      return;
     }
+
+    final updatedAlbum = _editService.updateAlbumFromForm(
+      originalAlbum: _originalAlbum,
+      name: _nameController.text,
+      artist: _artistController.text,
+      genre: _genreController.text,
+      selectedYear: _selectedYear,
+      selectedMedium: _selectedMedium,
+      isDigital: _isDigital,
+      tracks: _tracks,
+    );
+
+    Navigator.pop(context, updatedAlbum);
+  }
+
+  void _showValidationErrors(List<String> errors) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Validierungsfehler'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: errors.map((error) => Text('• $error')).toList(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Using WillPopScope instead of PopScope
-    return WillPopScope(
-      onWillPop: _onWillPop,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text("Edit Album"),
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            child: Column(
-              children: [
-                TextFormField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: "Album Name"),
-                ),
-                TextFormField(
-                  controller: artistController,
-                  decoration: const InputDecoration(labelText: "Artist"),
-                ),
-                TextFormField(
-                  controller: genreController,
-                  decoration: const InputDecoration(labelText: "Genre"),
-                ),
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(labelText: "Year"),
-                  value: selectedYear,
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      selectedYear = newValue;
-                    });
-                  },
-                  items: years.map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                ),
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(labelText: "Medium"),
-                  value: selectedMedium,
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      selectedMedium = newValue;
-                    });
-                  },
-                  items: <String>{
-                    'Vinyl',
-                    'CD',
-                    'Cassette',
-                    'Digital',
-                    'Unknown'
-                  }.map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                ),
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(labelText: "Digital"),
-                  value: isDigital != null ? (isDigital! ? "Yes" : "No") : null,
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      isDigital = newValue == "Yes" ? true : false;
-                    });
-                  },
-                  items: <String>['Yes', 'No']
-                      .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    itemCount: tracks.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index < tracks.length) {
-                        final track = tracks[index];
-                        return ListTile(
-                          leading: Text('Track ${track.trackNumber}'),
-                          title: TextFormField(
-                            controller: _trackTitleControllers[index],
-                            onChanged: (value) {
-                              track.title = value;
-                            },
-                            decoration: const InputDecoration(
-                              labelText: 'Track Title',
-                            ),
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.arrow_upward),
-                                onPressed: index > 0
-                                    ? () {
-                                        setState(() {
-                                          final temp = tracks[index];
-                                          tracks[index] = tracks[index - 1];
-                                          tracks[index - 1] = temp;
-                                          // Update track numbers
-                                          for (int i = 0;
-                                              i < tracks.length;
-                                              i++) {
-                                            tracks[i].trackNumber = (i + 1)
-                                                .toString()
-                                                .padLeft(2, '0');
-                                          }
-                                          _updateTrackControllers();
-                                        });
-                                      }
-                                    : null,
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.arrow_downward),
-                                onPressed: index < tracks.length - 1
-                                    ? () {
-                                        setState(() {
-                                          final temp = tracks[index];
-                                          tracks[index] = tracks[index + 1];
-                                          tracks[index + 1] = temp;
-                                          // Update track numbers
-                                          for (int i = 0;
-                                              i < tracks.length;
-                                              i++) {
-                                            tracks[i].trackNumber = (i + 1)
-                                                .toString()
-                                                .padLeft(2, '0');
-                                          }
-                                          _updateTrackControllers();
-                                        });
-                                      }
-                                    : null,
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete),
-                                onPressed: () {
-                                  setState(() {
-                                    tracks.removeAt(index);
-                                    // Update track numbers
-                                    for (int i = 0; i < tracks.length; i++) {
-                                      tracks[i].trackNumber =
-                                          (i + 1).toString().padLeft(2, '0');
-                                    }
-                                    _updateTrackControllers();
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        );
-                      } else {
-                        // "Add Track" button
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: ElevatedButton.icon(
-                            onPressed: _addTrack,
-                            icon: const Icon(Icons.add),
-                            label: const Text("Add Track"),
-                          ),
-                        );
-                      }
-                    },
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (!didPop) {
+          final shouldPop = await _onWillPop();
+          if (shouldPop && mounted) {
+            Navigator.of(context).pop();
+          }
+        }
+      },
+      child: AppLayout(
+        title: 'Album bearbeiten',
+        appBarColor: const Color(0xFF556B2F), // Olive green
+        actions: [
+          if (_hasUnsavedChanges())
+            IconButton(
+              onPressed: _saveAlbum,
+              icon: const Icon(Icons.save),
+              tooltip: 'Änderungen speichern',
+            ),
+        ],
+        body: SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.all(DS.md),
+          child: Column(
+            children: [
+              // Album Form
+              EditAlbumFormWidget(
+                nameController: _nameController,
+                artistController: _artistController,
+                genreController: _genreController,
+                selectedYear: _selectedYear,
+                selectedMedium: _selectedMedium,
+                isDigital: _isDigital,
+                onYearChanged: (value) => setState(() => _selectedYear = value),
+                onMediumChanged: (value) => setState(() => _selectedMedium = value),
+                onDigitalChanged: (value) => setState(() => _isDigital = value),
+              ),
+
+              const SizedBox(height: DS.lg),
+
+              // Track Management
+              TrackManagementWidget(
+                tracks: _tracks,
+                scrollController: _scrollController,
+                onTracksChanged: (tracks) => setState(() => _tracks = tracks),
+              ),
+
+              const SizedBox(height: DS.xl),
+
+              // Save Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _saveAlbum,
+                  icon: const Icon(Icons.save),
+                  label: const Text('Änderungen speichern'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(DS.md),
+                    textStyle: const TextStyle(fontSize: 16),
                   ),
                 ),
-                ElevatedButton(
-                  onPressed: _saveAlbum,
-                  child: const Text("Save Album"),
+              ),
+
+              // Discard Changes Button
+              const SizedBox(height: DS.sm),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final shouldDiscard = await _showUnsavedChangesDialog();
+                    if (shouldDiscard == true && mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  icon: const Icon(Icons.cancel_outlined),
+                  label: const Text('Änderungen verwerfen'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.all(DS.md),
+                    textStyle: const TextStyle(fontSize: 16),
+                  ),
                 ),
-              ],
-            ),
+              ),
+
+              const SizedBox(height: 100),
+            ],
           ),
         ),
       ),
     );
-  }
-
-  // Function to add a track
-  void _addTrack() {
-    setState(() {
-      int trackNumber = tracks.length + 1;
-      String formattedTrackNumber = trackNumber.toString().padLeft(2, '0');
-      tracks.add(Track(title: "", trackNumber: formattedTrackNumber));
-      _updateTrackControllers();
-    });
-
-    // Scroll down to the new track
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    });
   }
 }

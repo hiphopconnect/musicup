@@ -3,381 +3,313 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:csv/csv.dart';
-import 'package:flutter/foundation.dart'; // For listEquals
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/services/config_manager.dart';
-import 'package:uuid/uuid.dart'; // For UUID generation
-import 'package:xml/xml.dart' as xml;
+import 'package:music_up/services/logger_service.dart';
+import 'package:path_provider/path_provider.dart';
 
 class JsonService {
   final ConfigManager configManager;
 
   JsonService(this.configManager);
 
-  Future<String> _getJsonFilePath() async {
-    return await configManager.getJsonFilePathAsync();
+  // KORREKTUR: Verwende ConfigManager statt hardcodierte Pfade!
+  Future<String> _getAlbumsFilePath() async {
+    String? configPath = configManager.getJsonFilePath();
+
+    if (configPath != null && configPath.isNotEmpty) {
+      return configPath; // Verwende konfigurierten Pfad
+    }
+
+    // Fallback: Standard-Pfad wenn nicht konfiguriert
+    if (Platform.isAndroid || Platform.isIOS) {
+      final directory = await getApplicationDocumentsDirectory();
+      return '${directory.path}/albums.json'; // KORRIGIERT: albums.json statt music_up_albums.json
+    } else {
+      return 'albums.json'; // Desktop Fallback
+    }
   }
 
-  // Loads albums from a JSON file
+  // KORREKTUR: Verwende ConfigManager für Wantlist!
+  Future<String> _getWantlistFilePath() async {
+    return await configManager.getWantlistFilePathOrDefault();
+  }
+
+  // Load albums from JSON file (without tracks for performance)
   Future<List<Album>> loadAlbums() async {
-    String jsonPath = await _getJsonFilePath();
-
-    File file = File(jsonPath);
-    if (!await file.exists()) {
-      // Create an empty file if it doesn't exist
-      await file.writeAsString('[]');
-    }
-
-    String contents = await file.readAsString();
-
-    if (contents.isEmpty || contents == '[]') {
-      return [];
-    }
-
-    List<dynamic> jsonData = json.decode(contents);
-
-    if (jsonData.isEmpty) {
-      return [];
-    }
-
-    return jsonData
-        .map((item) => Album.fromMap(item as Map<String, dynamic>))
-        .toList();
+    return _loadAlbums(loadTracks: false);
   }
 
-  // Saves albums to the JSON file with formatting
-  Future<void> saveAlbums(List<Album> albums) async {
-    String jsonPath = await _getJsonFilePath();
-
-    File file = File(jsonPath);
-    String jsonString = const JsonEncoder.withIndent('  ')
-        .convert(albums.map((album) => album.toMap()).toList());
-    await file.writeAsString(jsonString);
-  }
-
-  // Helper function to generate an album key based on key attributes
-  String _generateAlbumKey(Album album) {
-    return '${album.name}|${album.artist}|${album.year}|${album.medium}|${album.digital}';
-  }
-
-  // Exports albums as JSON
-  Future<void> exportJson(String exportPath) async {
-    List<Album> albums = await loadAlbums();
-    String jsonString = const JsonEncoder.withIndent('  ')
-        .convert(albums.map((album) => album.toMap()).toList());
-    File file = File(exportPath);
-    await file.writeAsString(jsonString);
-  }
-
-  // Exports albums as XML
-  Future<void> exportXml(String exportPath) async {
-    List<Album> albums = await loadAlbums();
-    final builder = xml.XmlBuilder();
-
-    builder.processing('xml', 'version="1.0" encoding="UTF-8"');
-    builder.element('albums', nest: () {
-      for (Album album in albums) {
-        builder.element('album', nest: () {
-          builder.element('id', nest: album.id);
-          builder.element('name', nest: album.name);
-          builder.element('artist', nest: album.artist);
-          builder.element('genre', nest: album.genre);
-          builder.element('year', nest: album.year);
-          builder.element('medium', nest: album.medium);
-          builder.element('digital', nest: album.digital.toString());
-          builder.element('tracks', nest: () {
-            for (Track track in album.tracks) {
-              builder.element('track', nest: () {
-                builder.element('title', nest: track.title);
-                builder.element('trackNumber', nest: track.trackNumber);
-              });
-            }
-          });
-        });
-      }
-    });
-
-    final xmlDocument = builder.buildDocument();
-    File file = File(exportPath);
-    await file
-        .writeAsString(xmlDocument.toXmlString(pretty: true, indent: '  '));
-  }
-
-  // Exports albums as CSV
-  Future<void> exportCsv(String exportPath) async {
-    List<Album> albums = await loadAlbums();
-    List<List<dynamic>> csvData = [
-      [
-        'id',
-        'name',
-        'artist',
-        'genre',
-        'year',
-        'medium',
-        'digital',
-        'trackNumber',
-        'title'
-      ],
-    ];
-
-    for (Album album in albums) {
-      for (Track track in album.tracks) {
-        csvData.add([
-          album.id,
-          album.name,
-          album.artist,
-          album.genre,
-          album.year,
-          album.medium,
-          album.digital,
-          track.trackNumber,
-          track.title,
-        ]);
-      }
-    }
-
-    String csvString = const ListToCsvConverter().convert(csvData);
-    File file = File(exportPath);
-    await file.writeAsString(csvString);
-  }
-
-  // Imports albums from a JSON file and avoids duplicates
-  Future<void> importAlbums(String filePath) async {
-    File file = File(filePath);
-    if (!await file.exists()) {
-      throw Exception('Import file not found');
-    }
-
-    String contents = await file.readAsString();
-    List<dynamic> jsonData = json.decode(contents);
-
-    var uuid = const Uuid();
-
-    List<Album> existingAlbums = await loadAlbums();
-
-    // Create a map of existing albums based on the album key
-    Map<String, Album> existingAlbumMap = {
-      for (var album in existingAlbums) _generateAlbumKey(album): album,
-    };
-
-    for (var item in jsonData) {
-      Map<String, dynamic> albumData = item as Map<String, dynamic>;
-
-      Album importedAlbum = Album.fromMap(albumData);
-
-      // Generate an album key for the imported album
-      String albumKey = _generateAlbumKey(importedAlbum);
-
-      if (!existingAlbumMap.containsKey(albumKey)) {
-        // Generate a new unique ID
-        importedAlbum = importedAlbum.copyWith(id: uuid.v4());
-
-        existingAlbums.add(importedAlbum);
-        existingAlbumMap[albumKey] = importedAlbum;
-      }
-    }
-
-    await saveAlbums(existingAlbums);
-  }
-
-  // Imports albums from a CSV file and avoids duplicates
-  Future<void> importCsv(String filePath) async {
-    File file = File(filePath);
-    if (!await file.exists()) {
-      throw Exception('Import file not found');
-    }
-
-    String contents = await file.readAsString();
-
-    List<List<dynamic>> csvTable = const CsvToListConverter().convert(contents);
-
-    if (csvTable.isEmpty) {
-      throw Exception('CSV file is empty');
-    }
-
-    // The first row should be the header
-    List<dynamic> headers = csvTable[0];
-
-    // Expected headers
-    List<String> expectedHeaders = [
-      'id',
-      'name',
-      'artist',
-      'genre',
-      'year',
-      'medium',
-      'digital',
-      'trackNumber',
-      'title'
-    ];
-
-    if (!listEquals(headers, expectedHeaders)) {
-      throw Exception('CSV headers do not match expected format');
-    }
-
-    Map<String, Album> albumMap = {};
-    var uuid = const Uuid();
-
-    List<Album> existingAlbums = await loadAlbums();
-
-    // Create a map of existing albums based on the album key
-    Map<String, Album> existingAlbumMap = {
-      for (var album in existingAlbums) _generateAlbumKey(album): album,
-    };
-
-    for (int i = 1; i < csvTable.length; i++) {
-      List<dynamic> row = csvTable[i];
-
-      if (row.length != expectedHeaders.length) {
-        throw Exception('Invalid CSV format at line ${i + 1}');
-      }
-
-      Map<String, dynamic> data = {};
-      for (int j = 0; j < headers.length; j++) {
-        data[headers[j]] = row[j];
-      }
-
-      String albumName = data['name'].toString();
-      String artist = data['artist'].toString();
-      String genre = data['genre'].toString();
-      String year = data['year'].toString();
-      String medium = data['medium'].toString();
-      bool digital = data['digital'].toString().toLowerCase() == 'true';
-
-      // Generate an album key
-      String albumKey = '$albumName|$artist|$year|$medium|$digital';
-
-      String trackNumber = data['trackNumber'].toString();
-      String trackTitle = data['title'].toString();
-
-      Track track = Track(
-        title: trackTitle,
-        trackNumber: trackNumber,
+  // Load single album with full tracks
+  Future<Album?> loadAlbumWithTracks(String albumId) async {
+    try {
+      final albums = await _loadAlbums(loadTracks: true);
+      return albums.firstWhere(
+        (album) => album.id == albumId,
+        orElse: () => throw Exception('Album not found'),
       );
-
-      if (existingAlbumMap.containsKey(albumKey)) {
-        // Album already exists, add the track if it doesn't already exist
-        Album existingAlbum = existingAlbumMap[albumKey]!;
-
-        bool trackExists = existingAlbum.tracks.any((t) =>
-            t.trackNumber == track.trackNumber && t.title == track.title);
-
-        if (!trackExists) {
-          existingAlbum.tracks.add(track);
-        }
-      } else if (albumMap.containsKey(albumKey)) {
-        // Album is already in the import, add the track
-        albumMap[albumKey]!.tracks.add(track);
-      } else {
-        // New album, generate new ID
-        String newAlbumId = uuid.v4();
-
-        Album album = Album(
-          id: newAlbumId,
-          name: albumName,
-          artist: artist,
-          genre: genre,
-          year: year,
-          medium: medium,
-          digital: digital,
-          tracks: [track],
-        );
-        albumMap[albumKey] = album;
-      }
+    } catch (e) {
+      LoggerService.error('Album with tracks load', e);
+      return null;
     }
-
-    // Add the new albums
-    existingAlbums.addAll(albumMap.values);
-
-    await saveAlbums(existingAlbums);
   }
 
-  // Imports albums from an XML file and avoids duplicates
-  Future<void> importXml(String filePath) async {
-    File file = File(filePath);
-    if (!await file.exists()) {
-      throw Exception('Import file not found');
-    }
+  // Internal method for loading albums with optional track loading
+  Future<List<Album>> _loadAlbums({bool loadTracks = true}) async {
+    try {
+      final filePath = await _getAlbumsFilePath();
+      final file = File(filePath);
 
-    String contents = await file.readAsString();
+      if (!await file.exists()) {
+        LoggerService.info('Albums load', 'File does not exist, creating empty file');
+        await file.create(recursive: true);
+        await file.writeAsString('[\n]\n');
+        return [];
+      }
 
-    final document = xml.XmlDocument.parse(contents);
+      final contents = await file.readAsString();
+      if (contents.trim().isEmpty) {
+        LoggerService.warning('Albums load', 'File is empty');
+        return [];
+      }
 
-    List<Album> existingAlbums = await loadAlbums();
-    var uuid = const Uuid();
+      final List<dynamic> jsonList = json.decode(contents);
+      LoggerService.data('Albums loaded', jsonList.length, loadTracks ? 'items with tracks' : 'items metadata only');
 
-    // Create a map of existing albums based on the album key
-    Map<String, Album> existingAlbumMap = {
-      for (var album in existingAlbums) _generateAlbumKey(album): album,
-    };
+      // Use direct casting for better performance
+      final List<Album> albums = [];
+      for (final albumData in jsonList) {
+        final albumJson = albumData as Map<String, dynamic>;
 
-    final albumElements = document.findAllElements('album');
+        // Only parse tracks if requested and available
+        final List<Track> tracks;
+        if (loadTracks && albumJson.containsKey('tracks') && albumJson['tracks'] != null) {
+          final tracksList = albumJson['tracks'] as List<dynamic>;
+          tracks = tracksList.map<Track>((trackData) {
+            final trackJson = trackData as Map<String, dynamic>;
+            return Track(
+              trackNumber: trackJson['trackNumber']?.toString() ?? '1',
+              title: trackJson['title']?.toString() ?? 'Unknown Track',
+            );
+          }).toList();
+        } else {
+          tracks = <Track>[];
+        }
 
-    List<Album> importedAlbums = [];
-
-    for (var albumElement in albumElements) {
-      String name = albumElement.findElements('name').first.innerText;
-      String artist = albumElement.findElements('artist').first.innerText;
-      String genre = albumElement.findElements('genre').first.innerText;
-      String year = albumElement.findElements('year').first.innerText;
-      String medium = albumElement.findElements('medium').first.innerText;
-      bool digital =
-          albumElement.findElements('digital').first.innerText.toLowerCase() ==
-              'true';
-
-      // Generate an album key
-      String albumKey = '$name|$artist|$year|$medium|$digital';
-
-      List<Track> tracks = [];
-
-      final trackElements = albumElement.findAllElements('track');
-
-      for (var trackElement in trackElements) {
-        String title = trackElement.findElements('title').first.innerText;
-        String trackNumber =
-            trackElement.findElements('trackNumber').first.innerText;
-
-        tracks.add(Track(
-          title: title,
-          trackNumber: trackNumber,
+        albums.add(Album(
+          id: albumJson['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          name: albumJson['name']?.toString() ?? '',
+          artist: albumJson['artist']?.toString() ?? '',
+          genre: albumJson['genre']?.toString() ?? '',
+          year: albumJson['year']?.toString() ?? '',
+          medium: albumJson['medium']?.toString() ?? 'Vinyl',
+          digital: albumJson['digital'] == true,
+          tracks: tracks,
         ));
       }
 
-      if (existingAlbumMap.containsKey(albumKey)) {
-        // Album already exists, add new tracks
-        Album existingAlbum = existingAlbumMap[albumKey]!;
+      return albums;
+    } catch (e) {
+      LoggerService.error('Albums load', e);
+      return [];
+    }
+  }
 
-        for (var track in tracks) {
-          bool trackExists = existingAlbum.tracks.any((t) =>
-              t.trackNumber == track.trackNumber && t.title == track.title);
+  // Save albums to JSON file
+  Future<void> saveAlbums(List<Album> albums) async {
+    try {
+      final filePath = await _getAlbumsFilePath();
 
-          if (!trackExists) {
-            existingAlbum.tracks.add(track);
-          }
+      final file = File(filePath);
+
+      // Erstelle Directory falls nötig
+      await file.parent.create(recursive: true);
+
+      final List<Map<String, dynamic>> jsonList = albums.map((album) {
+        return {
+          'id': album.id,
+          'name': album.name,
+          'artist': album.artist,
+          'genre': album.genre,
+          'year': album.year,
+          'medium': album.medium,
+          'digital': album.digital,
+          'tracks': album.tracks
+              .map((track) => {
+                    'trackNumber': track.trackNumber,
+                    'title': track.title,
+                  })
+              .toList(),
+        };
+      }).toList();
+
+      // Schön formatiert speichern
+      const encoder = JsonEncoder.withIndent('  ');
+      await file.writeAsString('${encoder.convert(jsonList)}\n');
+      LoggerService.data('Albums saved', albums.length, 'items');
+    } catch (e) {
+      LoggerService.error('Albums save', e);
+      throw Exception('Failed to save albums: $e');
+    }
+  }
+
+  // Load wantlist from JSON file
+  Future<List<Album>> loadWantlist() async {
+    try {
+      final filePath = await _getWantlistFilePath();
+
+      final file = File(filePath);
+
+      if (await file.exists()) {
+        final contents = await file.readAsString();
+
+        if (contents.trim().isEmpty) {
+          LoggerService.warning('Wantlist load', 'File is empty');
+          return [];
         }
-      } else {
-        // New album, generate new ID
-        String newAlbumId = uuid.v4();
 
-        Album album = Album(
-          id: newAlbumId,
-          name: name,
-          artist: artist,
-          genre: genre,
-          year: year,
-          medium: medium,
-          digital: digital,
+        final List<dynamic> jsonList = json.decode(contents);
+        LoggerService.data('Wantlist loaded', jsonList.length, 'items');
+
+        return jsonList.map((albumMap) {
+          final Map<String, dynamic> albumJson =
+              Map<String, dynamic>.from(albumMap);
+
+          // Parse tracks (same as albums)
+          List<Track> tracks = [];
+          if (albumJson['tracks'] != null) {
+            final List<dynamic> tracksList = albumJson['tracks'];
+            tracks = tracksList.map((trackMap) {
+              final Map<String, dynamic> trackJson =
+                  Map<String, dynamic>.from(trackMap);
+              return Track(
+                trackNumber: trackJson['trackNumber']?.toString() ?? '1',
+                title: trackJson['title']?.toString() ?? 'Unknown Track',
+              );
+            }).toList();
+          }
+
+          return Album(
+            id: albumJson['id']?.toString() ??
+                DateTime.now().millisecondsSinceEpoch.toString(),
+            name: albumJson['name']?.toString() ?? '',
+            artist: albumJson['artist']?.toString() ?? '',
+            genre: albumJson['genre']?.toString() ?? '',
+            year: albumJson['year']?.toString() ?? '',
+            medium: albumJson['medium']?.toString() ?? 'Vinyl',
+            digital: albumJson['digital'] == true,
+            tracks: tracks,
+          );
+        }).toList();
+      } else {
+        LoggerService.info('Wantlist load', 'File does not exist, creating empty file');
+
+        // Erstelle leere Datei automatisch (schön formatiert)
+        await file.create(recursive: true);
+        await file.writeAsString('[\n]\n');
+
+        return [];
+      }
+    } catch (e) {
+      LoggerService.error('Wantlist load', e);
+      return [];
+    }
+  }
+
+  // Save wantlist to JSON file
+  Future<void> saveWantlist(List<Album> wantlist) async {
+    try {
+      final filePath = await _getWantlistFilePath();
+
+      final file = File(filePath);
+
+      // Erstelle Directory falls nötig
+      await file.parent.create(recursive: true);
+
+      final List<Map<String, dynamic>> jsonList = wantlist.map((album) {
+        return {
+          'id': album.id,
+          'name': album.name,
+          'artist': album.artist,
+          'genre': album.genre,
+          'year': album.year,
+          'medium': album.medium,
+          'digital': album.digital,
+          'tracks': album.tracks
+              .map((track) => {
+                    'trackNumber': track.trackNumber,
+                    'title': track.title,
+                  })
+              .toList(),
+        };
+      }).toList();
+
+      // Schön formatiert speichern
+      const encoder = JsonEncoder.withIndent('  ');
+      await file.writeAsString('${encoder.convert(jsonList)}\n');
+      LoggerService.data('Wantlist saved', wantlist.length, 'items');
+    } catch (e) {
+      LoggerService.error('Wantlist save', e);
+      throw Exception('Failed to save wantlist: $e');
+    }
+  }
+
+  // BONUS: Import-Funktion für externe JSON-Dateien
+  Future<List<Album>> importAlbumsFromFile(String importFilePath) async {
+    try {
+
+      final file = File(importFilePath);
+      if (!await file.exists()) {
+        throw Exception('Import file does not exist');
+      }
+
+      final contents = await file.readAsString();
+      final List<dynamic> jsonList = json.decode(contents);
+
+      List<Album> importedAlbums = jsonList.map((albumMap) {
+        final Map<String, dynamic> albumJson =
+            Map<String, dynamic>.from(albumMap);
+
+        // Parse tracks (same logic as loadAlbums)
+        List<Track> tracks = [];
+        if (albumJson['tracks'] != null) {
+          final List<dynamic> tracksList = albumJson['tracks'];
+          tracks = tracksList.map((trackMap) {
+            final Map<String, dynamic> trackJson =
+                Map<String, dynamic>.from(trackMap);
+            return Track(
+              trackNumber: trackJson['trackNumber']?.toString() ?? '1',
+              title: trackJson['title']?.toString() ?? 'Unknown Track',
+            );
+          }).toList();
+        }
+
+        return Album(
+          id: albumJson['id']?.toString() ??
+              DateTime.now().millisecondsSinceEpoch.toString(),
+          name: albumJson['name']?.toString() ?? '',
+          artist: albumJson['artist']?.toString() ?? '',
+          genre: albumJson['genre']?.toString() ?? '',
+          year: albumJson['year']?.toString() ?? '',
+          medium: albumJson['medium']?.toString() ?? 'Vinyl',
+          digital: albumJson['digital'] == true,
           tracks: tracks,
         );
+      }).toList();
 
-        importedAlbums.add(album);
-        existingAlbumMap[albumKey] = album;
-      }
+      LoggerService.data('Albums imported', importedAlbums.length, 'items');
+
+      // Merge with existing albums and save
+      List<Album> existingAlbums = await loadAlbums();
+
+      // Simple merge - add all imported albums (you might want to handle duplicates)
+      List<Album> mergedAlbums = [...existingAlbums, ...importedAlbums];
+      await saveAlbums(mergedAlbums);
+
+      return importedAlbums;
+    } catch (e) {
+      LoggerService.error('Albums import', e);
+      throw Exception('Failed to import albums: $e');
     }
-
-    existingAlbums.addAll(importedAlbums);
-
-    await saveAlbums(existingAlbums);
   }
 }

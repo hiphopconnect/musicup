@@ -24,7 +24,7 @@ void main() {
     ConfigManager configManager = ConfigManager();
     await configManager.loadConfig();
 
-    // Create a test album with tracks
+    // Create test albums without tracks (lazy loading)
     List<Album> testAlbums = [
       Album(
         id: '1',
@@ -34,10 +34,7 @@ void main() {
         year: '2021',
         medium: 'CD',
         digital: false,
-        tracks: [
-          Track(title: 'Track 1', trackNumber: '01'),
-          Track(title: 'Track 2', trackNumber: '02'),
-        ],
+        tracks: [], // Empty for performance (lazy loading)
       ),
       Album(
         id: '2',
@@ -47,10 +44,7 @@ void main() {
         year: '2022',
         medium: 'Vinyl',
         digital: true,
-        tracks: [
-          Track(title: 'Track A', trackNumber: '01'),
-          Track(title: 'Track B', trackNumber: '02'),
-        ],
+        tracks: [], // Empty for performance (lazy loading)
       ),
     ];
 

@@ -1,20 +1,18 @@
 // lib/screens/add_album_screen.dart
 
-import 'dart:io';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:music_up/models/album_model.dart';
-import 'package:path/path.dart' as p;
+import 'package:music_up/services/folder_import_service.dart';
+import 'package:music_up/services/logger_service.dart';
+import 'package:music_up/services/validation_service.dart';
+import 'package:music_up/services/auto_save_service.dart';
+import 'package:music_up/services/toast_service.dart';
+import 'package:music_up/services/accessibility_service.dart';
+import 'package:music_up/theme/design_system.dart';
+import 'package:music_up/widgets/album_form_widget.dart';
+import 'package:music_up/widgets/app_layout.dart';
+import 'package:music_up/widgets/track_management_widget.dart';
 import 'package:uuid/uuid.dart';
-
-/// Model for extracted track information
-class ExtractedTrack {
-  final String trackNumber;
-  final String title;
-
-  ExtractedTrack({required this.trackNumber, required this.title});
-}
 
 class AddAlbumScreen extends StatefulWidget {
   const AddAlbumScreen({super.key});
@@ -24,379 +22,210 @@ class AddAlbumScreen extends StatefulWidget {
 }
 
 class AddAlbumScreenState extends State<AddAlbumScreen> {
-  final nameController = TextEditingController();
-  final artistController = TextEditingController();
-  final genreController = TextEditingController();
-  String? selectedYear;
-  String? selectedMedium;
-  bool? isDigital;
-  List<Track> tracks = [];
-  final int currentYear = DateTime.now().year;
-  List<TextEditingController> _trackTitleControllers = [];
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _artistController = TextEditingController();
+  final TextEditingController _genreController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FolderImportService _folderImportService = FolderImportService();
+  final AutoSaveService _autoSaveService = AutoSaveService();
+
+  String? _selectedYear;
+  String? _selectedMedium;
+  bool? _isDigital;
+  List<Track> _tracks = [];
+  bool _hasUnsavedChanges = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeTrackControllers();
-  }
-
-  void _initializeTrackControllers() {
-    _trackTitleControllers = tracks.map((track) {
-      return TextEditingController(text: track.title);
-    }).toList();
-  }
-
-  void _updateTrackControllers() {
-    for (var controller in _trackTitleControllers) {
-      controller.dispose();
-    }
-    _trackTitleControllers = tracks.map((track) {
-      return TextEditingController(text: track.title);
-    }).toList();
+    _initializeWithEmptyTrack();
+    _setupAutoSave();
+    _loadDraftIfExists();
   }
 
   @override
   void dispose() {
-    nameController.dispose();
-    artistController.dispose();
-    genreController.dispose();
+    _autoSaveService.dispose();
+    _nameController.dispose();
+    _artistController.dispose();
+    _genreController.dispose();
     _scrollController.dispose();
-    for (var controller in _trackTitleControllers) {
-      controller.dispose();
-    }
     super.dispose();
   }
 
-  /// WillPopScope logic: ask the user if they want to save changes before leaving
+  void _initializeWithEmptyTrack() {
+    _tracks = [Track(trackNumber: '01', title: '')];
+  }
+
+  void _setupAutoSave() {
+    // Auto-save bei Text-Änderungen
+    _nameController.addListener(_triggerAutoSave);
+    _artistController.addListener(_triggerAutoSave);
+    _genreController.addListener(_triggerAutoSave);
+  }
+
+  void _triggerAutoSave() {
+    setState(() {
+      _hasUnsavedChanges = true;
+    });
+
+    final formData = {
+      'name': _nameController.text,
+      'artist': _artistController.text,
+      'genre': _genreController.text,
+      'year': _selectedYear,
+      'medium': _selectedMedium,
+      'digital': _isDigital,
+      'tracks': _tracks.map((t) => {'trackNumber': t.trackNumber, 'title': t.title}).toList(),
+    };
+
+    _autoSaveService.saveFormData('add_album', formData);
+  }
+
+  Future<void> _loadDraftIfExists() async {
+    final hasDraft = await _autoSaveService.hasDraftData('add_album');
+    if (hasDraft && mounted) {
+      final shouldLoad = await _showLoadDraftDialog();
+      if (shouldLoad == true) {
+        await _loadDraft();
+      }
+    }
+  }
+
+  Future<bool?> _showLoadDraftDialog() {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Entwurf gefunden'),
+        content: const Text('Es wurde ein gespeicherter Entwurf gefunden. Möchten Sie ihn laden?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Nein'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Ja, laden'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loadDraft() async {
+    final formData = await _autoSaveService.loadFormData('add_album');
+    if (formData != null && mounted) {
+      setState(() {
+        _nameController.text = formData['name'] ?? '';
+        _artistController.text = formData['artist'] ?? '';
+        _genreController.text = formData['genre'] ?? '';
+        _selectedYear = formData['year'];
+        _selectedMedium = formData['medium'];
+        _isDigital = formData['digital'];
+        
+        final tracksData = formData['tracks'] as List<dynamic>? ?? [];
+        _tracks = tracksData.map((t) => Track(
+          trackNumber: t['trackNumber'] ?? '',
+          title: t['title'] ?? '',
+        )).toList();
+        
+        if (_tracks.isEmpty) {
+          _initializeWithEmptyTrack();
+        }
+        
+        _hasUnsavedChanges = true;
+      });
+      
+      ToastService.showInfo(context, 'Entwurf geladen');
+    }
+  }
+
   Future<bool> _onWillPop() async {
     bool? shouldPop = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Save changes?'),
+        title: const Text('Änderungen speichern?'),
         content: const Text(
-            'Do you want to save the new album before leaving the page?'),
+            'Möchten Sie das neue Album vor dem Verlassen der Seite speichern?'),
         actions: [
           TextButton(
-            child: const Text('Cancel'),
+            child: const Text('Abbrechen'),
             onPressed: () => Navigator.of(context).pop(false),
           ),
           TextButton(
-            child: const Text('No'),
-            onPressed: () {
-              Navigator.of(context).pop(true);
-              Navigator.pop(context, null); // No changes are saved
-            },
+            child: const Text('Nicht speichern'),
+            onPressed: () => Navigator.of(context).pop(true),
           ),
           TextButton(
-            child: const Text('Yes'),
+            child: const Text('Speichern & Verlassen'),
             onPressed: () {
-              Navigator.of(context).pop(true);
-              _saveAlbum();
+              Navigator.of(context).pop(false); // Don't pop automatically
+              _saveAlbum(); // This will save and pop
             },
           ),
         ],
       ),
     );
-
     return shouldPop ?? false;
   }
 
-  /// Function to select a folder
-  Future<String?> _selectFolder() async {
-    String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
-    return selectedDirectory;
-  }
-
-  /// Function to read MP3 files from a folder
-  Future<List<File>> _getMp3Files(String directoryPath) async {
-    Directory dir = Directory(directoryPath);
-    if (!await dir.exists()) {
-      throw Exception("The selected folder does not exist.");
-    }
-
-    List<FileSystemEntity> entities = dir.listSync();
-    List<File> mp3Files = entities
-        .whereType<File>()
-        .where((file) => p.extension(file.path).toLowerCase() == '.mp3')
-        .toList();
-
-    return mp3Files;
-  }
-
-  /// Function to parse filenames
-  List<ExtractedTrack> _parseTrackInfo(List<File> mp3Files) {
-    List<ExtractedTrack> extractedTracks = [];
-
-    for (var file in mp3Files) {
-      String fileName = p.basenameWithoutExtension(file.path);
-      // Example: "01 - Song Title"
-      List<String> parts = fileName.split(' - ');
-
-      if (parts.length >= 2) {
-        String trackNumber = parts[0].trim();
-        String title = parts.sublist(1).join(' - ').trim();
-        extractedTracks
-            .add(ExtractedTrack(trackNumber: trackNumber, title: title));
-      } else {
-        // Fallback if the format doesn't match
-        extractedTracks.add(ExtractedTrack(trackNumber: '00', title: fileName));
-      }
-    }
-
-    return extractedTracks;
-  }
-
-  /// Function to create a new album from a folder
-  Future<Album?> _createAlbumFromFolder(String folderPath) async {
-    try {
-      // 1. Use folder name as album name
-      String albumName = p.basename(folderPath);
-      String artist = 'Unknown Artist'; // Optional: can be adjusted later
-      String genre = 'Unknown Genre'; // Optional: can be adjusted later
-      String year = 'Unknown Year'; // Optional: can be adjusted later
-      String medium = 'CD'; // Default medium
-      bool isDigital = false; // Default to not digital
-
-      // 2. Read MP3 files
-      List<File> mp3Files = await _getMp3Files(folderPath);
-      if (mp3Files.isEmpty) {
-        throw Exception("No MP3 files found in the selected folder.");
-      }
-
-      // 3. Extract track information
-      List<ExtractedTrack> extractedTracks = _parseTrackInfo(mp3Files);
-
-      // 4. Create Track objects
-      List<Track> parsedTracks = extractedTracks.map((et) {
-        return Track(
-          title: et.title,
-          trackNumber: et.trackNumber,
-        );
-      }).toList();
-
-      // 5. Create a new Album object
-      Album newAlbum = Album(
-        id: const Uuid().v4(),
-        name: albumName,
-        artist: artist,
-        genre: genre,
-        year: year,
-        medium: medium,
-        digital: isDigital,
-        tracks: parsedTracks,
-      );
-
-      return newAlbum;
-    } catch (e) {
-      // In production, use proper logging
-      debugPrint("Error creating album: $e");
-      return null;
-    }
-  }
-
-  /// Function to add an album from a folder
   Future<void> _addAlbumFromFolder() async {
-    String? folderPath = await _selectFolder();
-    if (folderPath == null) return;
+    try {
+      String? folderPath = await _folderImportService.selectFolder();
+      if (folderPath == null) return;
 
-    Album? newAlbum = await _createAlbumFromFolder(folderPath);
-    if (newAlbum != null) {
+      Album? newAlbum = await _folderImportService.createAlbumFromFolder(folderPath);
+      if (newAlbum != null) {
+        if (!mounted) return;
+        setState(() {
+          _nameController.text = newAlbum.name;
+          _tracks = newAlbum.tracks;
+          _selectedYear = newAlbum.year;
+          _selectedMedium = newAlbum.medium;
+          _isDigital = true;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${newAlbum.tracks.length} Tracks aus "${newAlbum.name}" importiert'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      LoggerService.error('Folder import', e);
       if (!mounted) return;
-      setState(() {
-        // Album name from folder
-        nameController.text = newAlbum.name;
-        // Optionally prefill other fields if desired
-        tracks = newAlbum.tracks;
-        selectedYear = newAlbum.year;
-        selectedMedium = newAlbum.medium;
-        isDigital = true;
-        _updateTrackControllers();
-      });
-
-      // Show a confirmation to the user
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text("Album automatically added. Please check the data.")),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Album could not be created.")),
+        SnackBar(
+          content: Text('Fehler beim Importieren: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text("Add Album"),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.folder_open),
-              tooltip: 'Add album from folder',
-              onPressed: _addAlbumFromFolder,
-            ),
-          ],
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            child: Column(
-              children: [
-                TextFormField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: "Album Title"),
-                ),
-                TextFormField(
-                  controller: artistController,
-                  decoration: const InputDecoration(labelText: "Artist"),
-                ),
-                TextFormField(
-                  controller: genreController,
-                  decoration: const InputDecoration(labelText: "Genre"),
-                ),
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(labelText: "Year"),
-                  value: selectedYear,
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      selectedYear = newValue;
-                    });
-                  },
-                  items: [
-                    const DropdownMenuItem<String>(
-                      value: 'Unknown Year',
-                      child: Text('Unknown Year'),
-                    ),
-                    ...List.generate(
-                      100,
-                      (index) => (currentYear - index).toString(),
-                    ).map<DropdownMenuItem<String>>((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }),
-                  ],
-                ),
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(labelText: "Medium"),
-                  value: selectedMedium,
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      selectedMedium = newValue;
-                    });
-                  },
-                  items: <String>['Vinyl', 'CD', 'Cassette', 'Digital']
-                      .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                ),
-                DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(labelText: "Digital"),
-                  value: isDigital != null ? (isDigital! ? "Yes" : "No") : null,
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      isDigital = newValue == "Yes" ? true : false;
-                    });
-                  },
-                  items: <String>['Yes', 'No']
-                      .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    itemCount: tracks.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index < tracks.length) {
-                        final track = tracks[index];
-                        return ListTile(
-                          leading: Text('Track ${track.trackNumber}'),
-                          title: TextFormField(
-                            controller: _trackTitleControllers[index],
-                            onChanged: (value) {
-                              setState(() {
-                                track.title = value;
-                              });
-                            },
-                            decoration: const InputDecoration(
-                              labelText: 'Track title',
-                            ),
-                          ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete),
-                            onPressed: () {
-                              setState(() {
-                                tracks.removeAt(index);
-                                _updateTrackControllers();
-                              });
-                            },
-                          ),
-                        );
-                      } else {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: ElevatedButton.icon(
-                            onPressed: _addTrack,
-                            icon: const Icon(Icons.add),
-                            label: const Text("Add track"),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: _saveAlbum,
-                  child: const Text("Save album"),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Function to add a track
-  void _addTrack() {
-    setState(() {
-      int trackNumber = tracks.length + 1;
-      String formattedTrackNumber = trackNumber.toString().padLeft(2, '0');
-      tracks.add(Track(title: "", trackNumber: formattedTrackNumber));
-      _updateTrackControllers();
-    });
-
-    // Scroll down to the newly added track
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
-
-  /// Adapted _saveAlbum function to save a specific album
   void _saveAlbum([Album? prefilledAlbum]) {
-    if (selectedMedium == null || isDigital == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill in all fields")),
-      );
+    // Album-Name und Künstler sind PFLICHT, Rest optional
+    final validationErrors = <String>[];
+    
+    final nameError = ValidationService.validateAlbumName(_nameController.text);
+    if (nameError != null) validationErrors.add(nameError);
+    
+    final artistError = ValidationService.validateArtistName(_artistController.text);
+    if (artistError != null) validationErrors.add(artistError);
+    
+    final genreError = ValidationService.validateGenre(_genreController.text);
+    if (genreError != null) validationErrors.add(genreError);
+    
+    final yearError = ValidationService.validateYear(_selectedYear);
+    if (yearError != null) validationErrors.add(yearError);
+    
+    final mediumError = ValidationService.validateMedium(_selectedMedium);
+    if (mediumError != null) validationErrors.add(mediumError);
+    
+    if (validationErrors.isNotEmpty) {
+      ToastService.showError(context, validationErrors.first);
+      AccessibilityAnnouncer.validationError(context, validationErrors.first);
       return;
     }
 
@@ -404,14 +233,104 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
     Album newAlbum = prefilledAlbum ??
         Album(
           id: uuid.v4(),
-          name: nameController.text,
-          artist: artistController.text,
-          genre: genreController.text,
-          year: selectedYear ?? 'Unknown',
-          medium: selectedMedium!,
-          digital: isDigital!,
-          tracks: tracks,
+          name: _nameController.text.trim(), // Pflicht-Felder wie eingegeben
+          artist: _artistController.text.trim(), // Pflicht-Felder wie eingegeben
+          genre: ValidationService.getGenreOrDefault(_genreController.text),
+          year: ValidationService.getYearOrDefault(_selectedYear),
+          medium: ValidationService.getMediumOrDefault(_selectedMedium),
+          digital: ValidationService.getDigitalOrDefault(_isDigital),
+          tracks: _tracks,
         );
+    
+    // Draft löschen nach erfolgreichem Speichern
+    _autoSaveService.clearFormData('add_album');
+    setState(() {
+      _hasUnsavedChanges = false;
+    });
+    
+    LoggerService.info('Album created', '${newAlbum.name} by ${newAlbum.artist}');
+    ToastService.showSuccess(context, 'Album "${newAlbum.name}" erfolgreich hinzugefügt');
+    AccessibilityAnnouncer.albumAdded(context, newAlbum.name, newAlbum.artist);
     Navigator.pop(context, newAlbum);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop) {
+          final shouldPop = await _onWillPop();
+          if (shouldPop && context.mounted) {
+            Navigator.of(context).pop();
+          }
+        }
+      },
+      child: AppLayout(
+        title: 'Neues Album hinzufügen',
+        appBarColor: const Color(0xFF2E4F2E), // Dark green
+        actions: [
+          IconButton(
+            onPressed: _addAlbumFromFolder,
+            icon: const Icon(Icons.folder_open),
+            tooltip: 'Aus Ordner importieren',
+          ),
+          IconButton(
+            onPressed: () => _saveAlbum(),
+            icon: const Icon(Icons.save),
+            tooltip: 'Album speichern',
+          ),
+        ],
+        body: SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.all(DS.md),
+          child: Column(
+            children: [
+              // Album Form
+              AlbumFormWidget(
+                nameController: _nameController,
+                artistController: _artistController,
+                genreController: _genreController,
+                selectedYear: _selectedYear,
+                selectedMedium: _selectedMedium,
+                isDigital: _isDigital,
+                onYearChanged: (value) => setState(() => _selectedYear = value),
+                onMediumChanged: (value) => setState(() => _selectedMedium = value),
+                onDigitalChanged: (value) => setState(() => _isDigital = value),
+              ),
+
+              const SizedBox(height: DS.lg),
+
+              // Track Management
+              TrackManagementWidget(
+                tracks: _tracks,
+                scrollController: _scrollController,
+                onTracksChanged: (tracks) => setState(() => _tracks = tracks),
+              ),
+
+              const SizedBox(height: DS.xl),
+
+              // Save Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _saveAlbum(),
+                  icon: const Icon(Icons.save),
+                  label: const Text('Album speichern'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2E4F2E), // Dark green
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(DS.md),
+                    textStyle: const TextStyle(fontSize: 16),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 100),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

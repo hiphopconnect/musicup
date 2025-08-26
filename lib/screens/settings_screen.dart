@@ -1,244 +1,455 @@
-// lib/screens/settings_screen.dart
-
-import 'dart:io';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:music_up/theme/design_system.dart';
+import 'package:music_up/widgets/app_layout.dart';
+import 'package:music_up/widgets/section_card.dart';
 
 import '../services/json_service.dart';
+import '../widgets/app_info_widget.dart';
+import '../widgets/import_export_widget.dart';
+import '../widgets/oauth_setup_widget.dart';
 
 class SettingsScreen extends StatefulWidget {
   final JsonService jsonService;
+  final Function(ThemeMode)? onThemeChanged;
 
-  const SettingsScreen({super.key, required this.jsonService});
+  const SettingsScreen({
+    super.key,
+    required this.jsonService,
+    this.onThemeChanged,
+  });
 
   @override
-  SettingsScreenState createState() => SettingsScreenState();
+  State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class SettingsScreenState extends State<SettingsScreen> {
-  TextEditingController jsonPathController = TextEditingController();
-  String appVersion = 'Loading...';
+class _SettingsScreenState extends State<SettingsScreen> {
+  late TextEditingController _collectionPathController;
+  late TextEditingController _wantlistPathController;
+
+  bool _isLoading = true;
+  bool _dataChanged = false;
+  ThemeMode _currentThemeMode = ThemeMode.system;
 
   @override
   void initState() {
     super.initState();
-    _initializeSettings();
-  }
-
-  Future<void> _initializeSettings() async {
-    String? jsonPath = widget.jsonService.configManager.getJsonFilePath();
-    setState(() {
-      jsonPathController.text = jsonPath ?? '';
-    });
-
-    // Retrieve version information
-    PackageInfo packageInfo = await PackageInfo.fromPlatform();
-    setState(() {
-      appVersion = packageInfo.version; // z.B. "1.2.0"
-    });
-  }
-
-  Future<void> _pickJsonFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['json'],
-    );
-
-    if (result != null && result.files.isNotEmpty) {
-      String? selectedFile = result.files.single.path;
-      if (selectedFile != null) {
-        setState(() {
-          jsonPathController.text = selectedFile;
-        });
-        await widget.jsonService.configManager.setJsonFilePath(selectedFile);
-        await widget.jsonService.configManager.saveConfig();
-
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('JSON-File saved!')),
-        );
-
-        Navigator.pop(context, true);
-      }
-    }
-  }
-
-  Future<void> _exportFile(String fileType) async {
-    if (Platform.isIOS || Platform.isAndroid) {
-      // Share the file on mobile platforms
-      String tempDir = (await getTemporaryDirectory()).path;
-      String exportPath = '$tempDir/albums_export.$fileType';
-
-      if (fileType == 'json') {
-        await widget.jsonService.exportJson(exportPath);
-      } else if (fileType == 'xml') {
-        await widget.jsonService.exportXml(exportPath);
-      } else if (fileType == 'csv') {
-        await widget.jsonService.exportCsv(exportPath);
-      }
-
-      await Share.shareXFiles([XFile(exportPath)],
-          text: 'Here is my album list');
-    } else {
-      // Use the file picker on desktop platforms
-      String? filePath = await FilePicker.platform.saveFile(
-        dialogTitle: 'Export $fileType File',
-        fileName: 'albums_export.$fileType',
-      );
-
-      if (filePath != null) {
-        if (fileType == 'json') {
-          await widget.jsonService.exportJson(filePath);
-        } else if (fileType == 'xml') {
-          await widget.jsonService.exportXml(filePath);
-        } else if (fileType == 'csv') {
-          await widget.jsonService.exportCsv(filePath);
-        }
-
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$fileType-File exported: $filePath')),
-        );
-      }
-    }
-  }
-
-  Future<void> _importFile(String fileType) async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: [fileType],
-    );
-
-    if (result != null && result.files.isNotEmpty) {
-      String? selectedPath = result.files.single.path;
-      if (selectedPath != null) {
-        try {
-          if (fileType == 'json') {
-            await widget.jsonService.importAlbums(selectedPath);
-          } else if (fileType == 'csv') {
-            await widget.jsonService.importCsv(selectedPath);
-          } else if (fileType == 'xml') {
-            await widget.jsonService.importXml(selectedPath);
-          }
-
-          if (!mounted) return;
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$fileType-File imported: $selectedPath')),
-          );
-
-          // Navigate back to the main page and signal that albums have been updated
-          Navigator.pop(context, true);
-        } catch (e) {
-          if (!mounted) return;
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Import failed: $e')),
-          );
-        }
-      }
-    }
+    _collectionPathController = TextEditingController();
+    _wantlistPathController = TextEditingController();
+    _currentThemeMode = widget.jsonService.configManager.getThemeMode();
+    _loadSettings();
   }
 
   @override
-  Widget build(BuildContext context) {
-    String platformInfo = Platform.isIOS || Platform.isAndroid
-        ? 'On mobile devices, the file is saved in the application directory.'
-        : 'You can select the path on desktop devices.';
+  void dispose() {
+    _collectionPathController.dispose();
+    _wantlistPathController.dispose();
+    super.dispose();
+  }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
+
+  Future<void> _loadSettings() async {
+    setState(() => _isLoading = true);
+    try {
+      final cm = widget.jsonService.configManager;
+      final collectionPath = cm.getCollectionFilePath();
+      final wantlistPath = await cm.getWantlistFilePathOrDefault();
+      setState(() {
+        _collectionPathController.text = collectionPath;
+        _wantlistPathController.text = wantlistPath;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading settings: $e')),
+      );
+    }
+  }
+
+  Future<void> _selectCollectionFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        dialogTitle: 'Select Collection JSON file',
+      );
+
+      if (result != null && result.files.single.path != null) {
+        String path = result.files.single.path!;
+
+        // WICHTIG: Erst ConfigManager aktualisieren
+        await widget.jsonService.configManager.setCollectionFilePath(path);
+
+        // DANN die Konfiguration neu laden
+        await widget.jsonService.configManager.loadConfig();
+
+        // ERST DANACH setState
+        if (mounted) {
+          setState(() {
+            _collectionPathController.text = path;
+            _dataChanged = true;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Collection path updated!')),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error selecting file: $e')),
+      );
+    }
+  }
+
+  Future<void> _selectWantlistFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        dialogTitle: 'Select Wantlist JSON file',
+      );
+
+      if (result != null && result.files.single.path != null) {
+        String path = result.files.single.path!;
+        setState(() {
+          _wantlistPathController.text = path;
+          _dataChanged = true; // auch hier setzen, falls gewünscht
+        });
+        await widget.jsonService.configManager.setWantlistFilePath(path);
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Wantlist path updated!')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error selecting file: $e')),
+      );
+    }
+  }
+
+
+  Future<void> _resetSettings() async {
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Settings'),
+        content: const Text(
+            'Are you sure you want to reset all settings to default?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Reset'),
+          ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
+    );
+
+    if (confirm == true) {
+      try {
+        await widget.jsonService.configManager.resetConfig();
+        await _loadSettings();
+
+        _dataChanged = true;
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Settings reset to default!')),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error resetting settings: $e')),
+        );
+      }
+    }
+  }
+
+
+
+
+
+
+
+  Widget _buildFilePathField({
+    required String label,
+    required TextEditingController controller,
+    required VoidCallback onSelectFile,
+    required IconData icon,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: DS.xs),
+        Row(
           children: [
-            Text(platformInfo),
-            const SizedBox(height: 16),
-            if (!Platform.isIOS && !Platform.isAndroid) ...[
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: jsonPathController,
-                      decoration:
-                          const InputDecoration(labelText: 'JSON-File path'),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: _pickJsonFile,
-                    child: const Text('Select JSON-File'),
-                  ),
-                ],
+            Expanded(
+              child: TextField(
+                controller: controller,
+                readOnly: true,
+                decoration: InputDecoration(
+                  hintText: 'No file selected',
+                  prefixIcon: Icon(icon),
+                  border: const OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                ),
               ),
-            ],
-            const SizedBox(height: 16),
-            // Export Buttons in a row
-            Wrap(
-              spacing: 16.0, // space between buttons
-              runSpacing: 8.0, // space between rows
-              alignment: WrapAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () => _exportFile('json'),
-                  child: const Text('Export as JSON'),
-                ),
-                ElevatedButton(
-                  onPressed: () => _exportFile('xml'),
-                  child: const Text('Export as XML'),
-                ),
-                ElevatedButton(
-                  onPressed: () => _exportFile('csv'),
-                  child: const Text('Export as CSV'),
-                ),
-              ],
             ),
-            const SizedBox(height: 16),
-            // Import Buttons in a row
-            Wrap(
-              spacing: 16.0, // space between buttons
-              runSpacing: 8.0, // space between rows
-              alignment: WrapAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () => _importFile('json'),
-                  child: const Text('Import JSON'),
-                ),
-                ElevatedButton(
-                  onPressed: () => _importFile('xml'),
-                  child: const Text('Import XML'),
-                ),
-                ElevatedButton(
-                  onPressed: () => _importFile('csv'),
-                  child: const Text('Import CSV'),
-                ),
-              ],
-            ),
-            const Spacer(),
-            Align(
-              alignment: Alignment.bottomLeft,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Maintainer: Michael Milke (Nobo)'),
-                  const Text('Email: nobo_code@posteo.de'),
-                  const Text(
-                      'GitHub: https://github.com/hiphopconnect/musicup/'),
-                  const Text('License: GPL-3.0'),
-                  Text('Version: $appVersion'),
-                ],
-              ),
+            const SizedBox(width: DS.xs),
+            ElevatedButton.icon(
+              onPressed: onSelectFile,
+              icon: const Icon(Icons.folder_open),
+              label: const Text('Browse'),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+
+  Widget _buildExpandableThemeSection() {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: DS.sm),
+      child: ExpansionTile(
+        title: const Text(
+          'App-Design',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        leading: const Icon(Icons.palette, color: Color(0xFF2E4F2E)),
+        children: [
+          RadioListTile<ThemeMode>(
+            title: const Text('Hell'),
+            subtitle: const Text('Immer helles Design'),
+            value: ThemeMode.light,
+            groupValue: _currentThemeMode,
+            onChanged: (ThemeMode? value) {
+              if (value != null && value != _currentThemeMode) {
+                setState(() {
+                  _currentThemeMode = value;
+                });
+                widget.jsonService.configManager.setThemeMode(value);
+                widget.onThemeChanged?.call(value);
+              }
+            },
+          ),
+          RadioListTile<ThemeMode>(
+            title: const Text('Dunkel'),
+            subtitle: const Text('Immer dunkles Design'),
+            value: ThemeMode.dark,
+            groupValue: _currentThemeMode,
+            onChanged: (ThemeMode? value) {
+              if (value != null && value != _currentThemeMode) {
+                setState(() {
+                  _currentThemeMode = value;
+                });
+                widget.jsonService.configManager.setThemeMode(value);
+                widget.onThemeChanged?.call(value);
+              }
+            },
+          ),
+          RadioListTile<ThemeMode>(
+            title: const Text('System'),
+            subtitle: const Text('Folgt den Systemeinstellungen'),
+            value: ThemeMode.system,
+            groupValue: _currentThemeMode,
+            onChanged: (ThemeMode? value) {
+              if (value != null && value != _currentThemeMode) {
+                setState(() {
+                  _currentThemeMode = value;
+                });
+                widget.jsonService.configManager.setThemeMode(value);
+                widget.onThemeChanged?.call(value);
+              }
+            },
+          ),
+          const SizedBox(height: DS.sm),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThemeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'App-Design',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: DS.xs),
+        Card(
+          child: Column(
+            children: [
+              RadioListTile<ThemeMode>(
+                title: const Text('Hell'),
+                subtitle: const Text('Immer helles Design'),
+                value: ThemeMode.light,
+                groupValue: _currentThemeMode,
+                onChanged: (ThemeMode? value) {
+                  if (value != null && value != _currentThemeMode) {
+                    // Schutz vor doppelten Updates
+                    setState(() {
+                      _currentThemeMode = value;
+                    });
+                    widget.jsonService.configManager.setThemeMode(value);
+                    widget.onThemeChanged?.call(value);
+                  }
+                },
+              ),
+              RadioListTile<ThemeMode>(
+                title: const Text('Dunkel'),
+                subtitle: const Text('Immer dunkles Design'),
+                value: ThemeMode.dark,
+                groupValue: _currentThemeMode,
+                onChanged: (ThemeMode? value) {
+                  if (value != null && value != _currentThemeMode) {
+                    // Schutz vor doppelten Updates
+                    setState(() {
+                      _currentThemeMode = value;
+                    });
+                    widget.jsonService.configManager.setThemeMode(value);
+                    widget.onThemeChanged?.call(value);
+                  }
+                },
+              ),
+              RadioListTile<ThemeMode>(
+                title: const Text('System'),
+                subtitle: const Text('Folgt den Systemeinstellungen'),
+                value: ThemeMode.system,
+                groupValue: _currentThemeMode,
+                onChanged: (ThemeMode? value) {
+                  if (value != null && value != _currentThemeMode) {
+                    // Schutz vor doppelten Updates
+                    setState(() {
+                      _currentThemeMode = value;
+                    });
+                    widget.jsonService.configManager.setThemeMode(value);
+                    widget.onThemeChanged?.call(value);
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const AppLayout(
+        title: 'Einstellungen',
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return PopScope(
+      canPop: false,
+      // ignore: deprecated_member_use
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          Navigator.pop(context, _dataChanged);
+        }
+      },
+      child: AppLayout(
+        title: 'Einstellungen',
+        appBarColor: const Color(0xFF2C2C2C), // Charcoal
+        actions: [
+          IconButton(
+            onPressed: _resetSettings,
+            icon: const Icon(Icons.restore),
+            tooltip: 'Einstellungen zurücksetzen',
+          ),
+        ],
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(DS.md),
+          child: Column(
+            children: [
+              // Dateipfade Sektion
+              SectionCard(
+                title: 'Dateipfade',
+                child: Column(
+                  children: [
+                    _buildFilePathField(
+                      label: 'Collection JSON-Datei',
+                      controller: _collectionPathController,
+                      onSelectFile: _selectCollectionFile,
+                      icon: Icons.library_music,
+                    ),
+                    const SizedBox(height: DS.md),
+                    _buildFilePathField(
+                      label: 'Wantlist JSON-Datei',
+                      controller: _wantlistPathController,
+                      onSelectFile: _selectWantlistFile,
+                      icon: Icons.favorite,
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: DS.lg),
+
+              // Discogs Integration Sektion
+              SectionCard(
+                title: 'Discogs Integration',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    OAuthSetupWidget(
+                      configManager: widget.jsonService.configManager,
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: DS.lg),
+
+              // Import/Export Sektion
+              SectionCard(
+                title: 'Import/Export',
+                child: ImportExportWidget(
+                  jsonService: widget.jsonService,
+                ),
+              ),
+
+              const SizedBox(height: DS.lg),
+
+              // Design-Sektion (Ausklappbar)
+              _buildExpandableThemeSection(),
+
+              const SizedBox(height: DS.lg),
+
+              // App-Informationen Sektion
+              SectionCard(
+                title: 'Über MusicUp',
+                child: const AppInfoWidget(),
+              ),
+
+              const SizedBox(height: DS.lg),
+
+              const SizedBox(height: 100),
+            ],
+          ),
         ),
       ),
     );

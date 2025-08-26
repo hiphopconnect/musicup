@@ -1,0 +1,42 @@
+[
+  {
+    "id": "want_rel_892043",
+    "name": "The Essential Michael Jackson",
+    "artist": "Michael Jackson",
+    "genre": "Electronic",
+    "year": "2005",
+    "medium": "CD",
+    "digital": false,
+    "tracks": []
+  },
+  {
+    "id": "want_rel_33628299",
+    "name": "Polaris",
+    "artist": "Prinz Pi",
+    "genre": "Electronic",
+    "year": "2024",
+    "medium": "Vinyl",
+    "digital": false,
+    "tracks": []
+  },
+  {
+    "id": "want_rel_33671787",
+    "name": "Black Samson, The Bastard Swordsman",
+    "artist": "Wu-Tang Clan",
+    "genre": "Hip Hop",
+    "year": "2025",
+    "medium": "Vinyl",
+    "digital": false,
+    "tracks": []
+  },
+  {
+    "id": "want_rel_123144",
+    "name": "„Tschuldigung” / „Weltretten 4-”",
+    "artist": "Eins, Zwo",
+    "genre": "Hip Hop",
+    "year": "1999",
+    "medium": "Vinyl",
+    "digital": false,
+    "tracks": []
+  }
+]
