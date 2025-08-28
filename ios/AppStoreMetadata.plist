@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>AppStoreReviewInformation</key>
+    <dict>
+        <key>contact_email</key>
+        <string>nobo_code@posteo.de</string>
+        <key>contact_first_name</key>
+        <string>Michael</string>
+        <key>contact_last_name</key>
+        <string>Milke</string>
+        <key>contact_phone</key>
+        <string></string>
+        <key>demo_account_name</key>
+        <string></string>
+        <key>demo_account_password</key>
+        <string></string>
+        <key>notes</key>
+        <string>MusicUp is a local music collection management app. No account or internet connection required for basic functionality. Discogs integration is optional and requires internet connection for album search only.</string>
+    </dict>
+    <key>Categories</key>
+    <dict>
+        <key>primary_category</key>
+        <string>MUSIC</string>
+        <key>secondary_category</key>
+        <string>PRODUCTIVITY</string>
+    </dict>
+    <key>ContentRights</key>
+    <dict>
+        <key>contains_third_party_content</key>
+        <false/>
+        <key>uses_encryption</key>
+        <false/>
+    </dict>
+    <key>Localizations</key>
+    <dict>
+        <key>en-US</key>
+        <dict>
+            <key>description</key>
+            <string>Organize Your Music Collection Like a Pro
+
+MusicUp is the perfect tool for music enthusiasts who want to catalog and manage their physical and digital music collections. Whether you collect vinyl records, CDs, or digital albums, MusicUp keeps everything organized in one place.
+
+Key Features:
+• Complete Collection Management - Add, edit, and organize your albums
+• Discogs Integration - Search and import from the world's largest music database
+• Privacy First - Your data stays on your device
+• Import/Export - Backup in JSON, CSV, or XML formats
+• Modern Interface - Clean design with dark/light themes
+• Advanced Filtering - Find albums by genre, year, format, and more
+• Wantlist Management - Track albums you want to buy
+
+Perfect for vinyl collectors, CD enthusiasts, music store owners, and anyone who loves organized music collections.
+
+No subscriptions, no ads, no data mining. Pay once, use forever.</string>
+            <key>keywords</key>
+            <string>music,collection,vinyl,records,CD,catalog,discogs,album,organizer,database</string>
+            <key>marketing_url</key>
+            <string>https://github.com/hiphopconnect/musicup</string>
+            <key>privacy_policy_url</key>
+            <string>https://github.com/hiphopconnect/musicup/blob/main/legal/PRIVACY_POLICY.md</string>
+            <key>promotional_text</key>
+            <string>The ultimate music collection manager for vinyl, CD, and digital album collectors.</string>
+            <key>release_notes</key>
+            <string>Initial App Store release with complete music collection management features.</string>
+            <key>subtitle</key>
+            <string>Music Collection Manager</string>
+            <key>support_url</key>
+            <string>https://github.com/hiphopconnect/musicup/issues</string>
+        </dict>
+    </dict>
+    <key>PricingInfo</key>
+    <dict>
+        <key>price_tier</key>
+        <string>Tier 10</string>
+        <key>territories</key>
+        <array>
+            <string>WW</string>
+        </array>
+    </dict>
+</dict>
+</plist>

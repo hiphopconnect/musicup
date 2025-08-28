@@ -24,7 +24,8 @@ class JsonService {
     // Fallback: Standard-Pfad wenn nicht konfiguriert
     if (Platform.isAndroid || Platform.isIOS) {
       final directory = await getApplicationDocumentsDirectory();
-      return '${directory.path}/albums.json'; // KORRIGIERT: albums.json statt music_up_albums.json
+      return '${directory
+          .path}/albums.json'; // KORRIGIERT: albums.json statt music_up_albums.json
     } else {
       return 'albums.json'; // Desktop Fallback
     }
@@ -45,7 +46,7 @@ class JsonService {
     try {
       final albums = await _loadAlbums(loadTracks: true);
       return albums.firstWhere(
-        (album) => album.id == albumId,
+            (album) => album.id == albumId,
         orElse: () => throw Exception('Album not found'),
       );
     } catch (e) {
@@ -61,20 +62,24 @@ class JsonService {
       final file = File(filePath);
 
       if (!await file.exists()) {
-        LoggerService.info('Albums load', 'File does not exist, creating empty file');
+        LoggerService.info(
+            'Albums load', 'File does not exist, creating empty file');
         await file.create(recursive: true);
         await file.writeAsString('[\n]\n');
         return [];
       }
 
       final contents = await file.readAsString();
-      if (contents.trim().isEmpty) {
+      if (contents
+          .trim()
+          .isEmpty) {
         LoggerService.warning('Albums load', 'File is empty');
         return [];
       }
 
       final List<dynamic> jsonList = json.decode(contents);
-      LoggerService.data('Albums loaded', jsonList.length, loadTracks ? 'items with tracks' : 'items metadata only');
+      LoggerService.data('Albums loaded', jsonList.length,
+          loadTracks ? 'items with tracks' : 'items metadata only');
 
       // Use direct casting for better performance
       final List<Album> albums = [];
@@ -83,7 +88,8 @@ class JsonService {
 
         // Only parse tracks if requested and available
         final List<Track> tracks;
-        if (loadTracks && albumJson.containsKey('tracks') && albumJson['tracks'] != null) {
+        if (loadTracks && albumJson.containsKey('tracks') &&
+            albumJson['tracks'] != null) {
           final tracksList = albumJson['tracks'] as List<dynamic>;
           tracks = tracksList.map<Track>((trackData) {
             final trackJson = trackData as Map<String, dynamic>;
@@ -97,7 +103,10 @@ class JsonService {
         }
 
         albums.add(Album(
-          id: albumJson['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          id: albumJson['id']?.toString() ?? DateTime
+              .now()
+              .millisecondsSinceEpoch
+              .toString(),
           name: albumJson['name']?.toString() ?? '',
           artist: albumJson['artist']?.toString() ?? '',
           genre: albumJson['genre']?.toString() ?? '',
@@ -135,10 +144,11 @@ class JsonService {
           'medium': album.medium,
           'digital': album.digital,
           'tracks': album.tracks
-              .map((track) => {
-                    'trackNumber': track.trackNumber,
-                    'title': track.title,
-                  })
+              .map((track) =>
+          {
+            'trackNumber': track.trackNumber,
+            'title': track.title,
+          })
               .toList(),
         };
       }).toList();
@@ -163,7 +173,9 @@ class JsonService {
       if (await file.exists()) {
         final contents = await file.readAsString();
 
-        if (contents.trim().isEmpty) {
+        if (contents
+            .trim()
+            .isEmpty) {
           LoggerService.warning('Wantlist load', 'File is empty');
           return [];
         }
@@ -173,7 +185,7 @@ class JsonService {
 
         return jsonList.map((albumMap) {
           final Map<String, dynamic> albumJson =
-              Map<String, dynamic>.from(albumMap);
+          Map<String, dynamic>.from(albumMap);
 
           // Parse tracks (same as albums)
           List<Track> tracks = [];
@@ -181,7 +193,7 @@ class JsonService {
             final List<dynamic> tracksList = albumJson['tracks'];
             tracks = tracksList.map((trackMap) {
               final Map<String, dynamic> trackJson =
-                  Map<String, dynamic>.from(trackMap);
+              Map<String, dynamic>.from(trackMap);
               return Track(
                 trackNumber: trackJson['trackNumber']?.toString() ?? '1',
                 title: trackJson['title']?.toString() ?? 'Unknown Track',
@@ -191,7 +203,10 @@ class JsonService {
 
           return Album(
             id: albumJson['id']?.toString() ??
-                DateTime.now().millisecondsSinceEpoch.toString(),
+                DateTime
+                    .now()
+                    .millisecondsSinceEpoch
+                    .toString(),
             name: albumJson['name']?.toString() ?? '',
             artist: albumJson['artist']?.toString() ?? '',
             genre: albumJson['genre']?.toString() ?? '',
@@ -202,7 +217,8 @@ class JsonService {
           );
         }).toList();
       } else {
-        LoggerService.info('Wantlist load', 'File does not exist, creating empty file');
+        LoggerService.info(
+            'Wantlist load', 'File does not exist, creating empty file');
 
         // Erstelle leere Datei automatisch (schön formatiert)
         await file.create(recursive: true);
@@ -236,10 +252,11 @@ class JsonService {
           'medium': album.medium,
           'digital': album.digital,
           'tracks': album.tracks
-              .map((track) => {
-                    'trackNumber': track.trackNumber,
-                    'title': track.title,
-                  })
+              .map((track) =>
+          {
+            'trackNumber': track.trackNumber,
+            'title': track.title,
+          })
               .toList(),
         };
       }).toList();
@@ -257,7 +274,6 @@ class JsonService {
   // BONUS: Import-Funktion für externe JSON-Dateien
   Future<List<Album>> importAlbumsFromFile(String importFilePath) async {
     try {
-
       final file = File(importFilePath);
       if (!await file.exists()) {
         throw Exception('Import file does not exist');
@@ -268,7 +284,7 @@ class JsonService {
 
       List<Album> importedAlbums = jsonList.map((albumMap) {
         final Map<String, dynamic> albumJson =
-            Map<String, dynamic>.from(albumMap);
+        Map<String, dynamic>.from(albumMap);
 
         // Parse tracks (same logic as loadAlbums)
         List<Track> tracks = [];
@@ -276,7 +292,7 @@ class JsonService {
           final List<dynamic> tracksList = albumJson['tracks'];
           tracks = tracksList.map((trackMap) {
             final Map<String, dynamic> trackJson =
-                Map<String, dynamic>.from(trackMap);
+            Map<String, dynamic>.from(trackMap);
             return Track(
               trackNumber: trackJson['trackNumber']?.toString() ?? '1',
               title: trackJson['title']?.toString() ?? 'Unknown Track',
@@ -286,7 +302,10 @@ class JsonService {
 
         return Album(
           id: albumJson['id']?.toString() ??
-              DateTime.now().millisecondsSinceEpoch.toString(),
+              DateTime
+                  .now()
+                  .millisecondsSinceEpoch
+                  .toString(),
           name: albumJson['name']?.toString() ?? '',
           artist: albumJson['artist']?.toString() ?? '',
           genre: albumJson['genre']?.toString() ?? '',

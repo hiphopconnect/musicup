@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/app_layout.dart';
 import 'package:music_up/widgets/section_card.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/json_service.dart';
 import '../widgets/app_info_widget.dart';
@@ -46,7 +47,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _wantlistPathController.dispose();
     super.dispose();
   }
-
 
   Future<void> _loadSettings() async {
     setState(() => _isLoading = true);
@@ -134,7 +134,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-
   Future<void> _resetSettings() async {
     bool? confirm = await showDialog<bool>(
       context: context,
@@ -175,12 +174,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     }
   }
-
-
-
-
-
-
 
   Widget _buildFilePathField({
     required String label,
@@ -223,20 +216,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      ),
+    );
+  }
 
   Widget _buildExpandableThemeSection() {
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: DS.sm),
-      child: ExpansionTile(
-        title: const Text(
-          'App-Design',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        leading: const Icon(Icons.palette, color: Color(0xFF2E4F2E)),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
         children: [
           RadioListTile<ThemeMode>(
             title: const Text('Hell'),
-            subtitle: const Text('Immer helles Design'),
+            subtitle: const Text('Immer helles Design verwenden'),
             value: ThemeMode.light,
             groupValue: _currentThemeMode,
             onChanged: (ThemeMode? value) {
@@ -248,10 +249,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 widget.onThemeChanged?.call(value);
               }
             },
+            secondary: const Icon(Icons.light_mode),
           ),
           RadioListTile<ThemeMode>(
             title: const Text('Dunkel'),
-            subtitle: const Text('Immer dunkles Design'),
+            subtitle: const Text('Immer dunkles Design verwenden'),
             value: ThemeMode.dark,
             groupValue: _currentThemeMode,
             onChanged: (ThemeMode? value) {
@@ -263,10 +265,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 widget.onThemeChanged?.call(value);
               }
             },
+            secondary: const Icon(Icons.dark_mode),
           ),
           RadioListTile<ThemeMode>(
             title: const Text('System'),
-            subtitle: const Text('Folgt den Systemeinstellungen'),
+            subtitle: const Text('Systemeinstellung verwenden'),
             value: ThemeMode.system,
             groupValue: _currentThemeMode,
             onChanged: (ThemeMode? value) {
@@ -278,8 +281,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 widget.onThemeChanged?.call(value);
               }
             },
+            secondary: const Icon(Icons.settings_suggest),
           ),
-          const SizedBox(height: DS.sm),
         ],
       ),
     );
@@ -351,8 +354,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ],
     );
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -434,15 +435,86 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               const SizedBox(height: DS.lg),
 
-              // Design-Sektion (Ausklappbar)
+              // Design-Sektion
+              _buildSectionTitle('Erscheinungsbild'),
               _buildExpandableThemeSection(),
 
-              const SizedBox(height: DS.lg),
+              const SizedBox(height: 16),
 
               // App-Informationen Sektion
-              SectionCard(
-                title: 'Über MusicUp',
-                child: const AppInfoWidget(),
+              _buildSectionTitle('Über MusicUp'),
+              Card(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Column(
+                  children: [
+                    const ListTile(
+                      leading: Icon(Icons.info),
+                      title: Text('Version'),
+                      subtitle: Text('1.1.3'),
+                    ),
+                    const ListTile(
+                      leading: Icon(Icons.gavel),
+                      title: Text('Lizenz'),
+                      subtitle: Text('Proprietary Software'),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.person),
+                      title: const Text('Entwickler'),
+                      subtitle: const Text('Michael Milke (Nobo)'),
+                      onTap: () async {
+                        final Uri url =
+                            Uri.parse('https://github.com/hiphopconnect');
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(url);
+                        }
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.email),
+                      title: const Text('Kontakt'),
+                      subtitle: const Text('nobo_code@posteo.de'),
+                      onTap: () async {
+                        final Uri emailUri = Uri(
+                          scheme: 'mailto',
+                          path: 'nobo_code@posteo.de',
+                        );
+                        if (await canLaunchUrl(emailUri)) {
+                          await launchUrl(emailUri);
+                        }
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.bug_report),
+                      title: const Text('Problem melden'),
+                      subtitle: const Text('E-Mail an Support senden'),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: () async {
+                        final Uri emailUri = Uri(
+                          scheme: 'mailto',
+                          path: 'nobo_code@posteo.de',
+                          query:
+                              'subject=MusicUp Support&body=Problem beschreibung:\n\n',
+                        );
+                        if (await canLaunchUrl(emailUri)) {
+                          await launchUrl(emailUri);
+                        }
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.code),
+                      title: const Text('Repository'),
+                      subtitle: const Text('github.com/hiphopconnect/musicup'),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: () async {
+                        final Uri url = Uri.parse(
+                            'https://github.com/hiphopconnect/musicup');
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(url);
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: DS.lg),

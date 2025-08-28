@@ -9,11 +9,11 @@ import 'package:music_up/theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialisiere den ConfigManager
+  // Initialize core services
   ConfigManager configManager = ConfigManager();
   await configManager.loadConfig();
 
-  // Erstelle eine Instanz des JsonService
+  // Create JsonService instance
   JsonService jsonService = JsonService(configManager);
 
   runApp(MyApp(jsonService: jsonService, configManager: configManager));
@@ -23,8 +23,11 @@ class MyApp extends StatefulWidget {
   final JsonService jsonService;
   final ConfigManager configManager;
 
-  const MyApp(
-      {super.key, required this.jsonService, required this.configManager});
+  const MyApp({
+    super.key, 
+    required this.jsonService, 
+    required this.configManager
+  });
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -41,9 +44,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _updateTheme(ThemeMode mode) {
-    // Nur setState aufrufen, ConfigManager wird in den Settings gespeichert
     if (_themeMode != mode) {
-      // Wichtige Änderung: Nur bei Änderung aktualisieren
       setState(() {
         _themeMode = mode;
       });
@@ -61,23 +62,13 @@ class _MyAppState extends State<MyApp> {
       builder: (context, child) {
         return Listener(
           onPointerDown: (PointerDownEvent event) {
-            // Debug: Print button values to console
-            print('Mouse button pressed: ${event.buttons} (kind: ${event.kind})');
-            
-            // Try multiple common values for back button
-            // Different systems/mice use different values
-            final backButtonValues = [8, 16, 4, 32]; // Common back button values
+            // Handle mouse back button
+            final backButtonValues = [8, 16, 4, 32];
             
             if (backButtonValues.contains(event.buttons)) {
-              print('Back button detected! Attempting navigation...');
-              
-              // Use the global navigator key
               final navigatorState = _navigatorKey.currentState;
               if (navigatorState != null && navigatorState.canPop()) {
                 navigatorState.pop();
-                print('Navigation successful!');
-              } else {
-                print('Cannot pop - already at root or no navigator found');
               }
             }
           },
@@ -85,14 +76,12 @@ class _MyAppState extends State<MyApp> {
             focusNode: FocusNode(),
             autofocus: true,
             onKey: (RawKeyEvent event) {
-              // Also handle keyboard shortcuts like Alt+Left
               if (event is RawKeyDownEvent) {
                 final isAltPressed = event.isAltPressed;
                 final isLeftArrow = event.logicalKey == LogicalKeyboardKey.arrowLeft;
                 final isBrowserBack = event.logicalKey == LogicalKeyboardKey.browserBack;
                 
                 if ((isAltPressed && isLeftArrow) || isBrowserBack) {
-                  print('Keyboard back shortcut detected!');
                   final navigatorState = _navigatorKey.currentState;
                   if (navigatorState != null && navigatorState.canPop()) {
                     navigatorState.pop();
@@ -106,34 +95,15 @@ class _MyAppState extends State<MyApp> {
       },
       home: MainScreen(
         jsonService: widget.jsonService,
-        onThemeChanged: _updateTheme, // Callback für Theme-Änderungen
+        onThemeChanged: _updateTheme,
       ),
       routes: {
-        // Named-Route für Einstellungen
         '/settings': (context) => SettingsScreen(
-              jsonService: widget.jsonService,
-              onThemeChanged: _updateTheme,
-            ),
+          jsonService: widget.jsonService,
+          onThemeChanged: _updateTheme,
+        ),
       },
+      debugShowCheckedModeBanner: false,
     );
-  }
-}
-
-// Intent for mouse back button
-class _BackIntent extends Intent {
-  const _BackIntent();
-}
-
-// Action for handling mouse back button
-class _BackAction extends Action<_BackIntent> {
-  @override
-  Object? invoke(_BackIntent intent) {
-    // Get the current navigator context
-    final context = primaryFocus?.context;
-    if (context != null && Navigator.canPop(context)) {
-      Navigator.pop(context);
-      return null;
-    }
-    return null;
   }
 }

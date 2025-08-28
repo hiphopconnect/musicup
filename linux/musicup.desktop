@@ -1,0 +1,18 @@
+[Desktop Entry]
+Name=MusicUp
+Comment=Manage your music collection with Discogs integration
+Comment[de]=Verwalten Sie Ihre Musiksammlung mit Discogs-Integration
+GenericName=Music Collection Manager
+GenericName[de]=Musiksammlungs-Manager
+Exec=musicup %U
+Icon=musicup
+Terminal=false
+Type=Application
+Categories=AudioVideo;Audio;Music;Database;Office;
+MimeType=application/json;text/csv;application/xml;
+Keywords=music;collection;vinyl;cd;discogs;album;catalog;
+Keywords[de]=musik;sammlung;schallplatte;cd;discogs;album;katalog;
+StartupNotify=true
+StartupWMClass=music_up
+Version=1.0
+X-AppStream-Ignore=false

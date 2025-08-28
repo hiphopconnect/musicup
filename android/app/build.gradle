@@ -23,8 +23,8 @@ android {
         applicationId = "de.posteo.nobo_code.music_up"  // Deine richtige App ID!
         minSdk = 21                                     // Bleibt bei 21 (Android 5.0+)
         targetSdk = 35
-        versionCode = 8
-        versionName = "2.1.2"
+        versionCode = 9
+        versionName = "2.2.0"
     }
 
     buildTypes {

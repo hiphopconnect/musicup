@@ -1,0 +1,32 @@
+{
+  "packageName": "com.nobo.music_up",
+  "title": "MusicUp - Music Collection Manager",
+  "shortDescription": "Manage your music collection with Discogs integration. Local, private, secure.",
+  "fullDescription": "Organize Your Music Collection Like a Pro\n\nMusicUp is the perfect tool for music enthusiasts who want to catalog and manage their physical and digital music collections. Whether you collect vinyl records, CDs, or digital albums, MusicUp keeps everything organized in one place.\n\n🎵 Key Features:\n• Complete Collection Management - Add, edit, and organize your albums with detailed information\n• Discogs Integration - Search and import album data directly from the world's largest music database\n• Privacy First - Your data stays on your device - complete privacy\n• Import/Export - Backup your collection in JSON, CSV, or XML formats\n• Modern Interface - Clean, intuitive design with dark/light themes\n• Advanced Filtering - Find albums by genre, year, format, and more\n• Wantlist Management - Keep track of albums you want to buy\n\n🎯 Perfect For:\n• Vinyl record collectors\n• CD enthusiasts\n• Digital music collectors\n• Music store owners\n• DJ's organizing their collections\n• Anyone who loves music organization\n\n🔒 Privacy First:\nUnlike other collection apps, MusicUp stores everything locally on your device. No accounts, no cloud sync, no data mining. Your collection data is yours alone.\n\n💰 No Subscriptions:\nPay once, use forever. No monthly fees, no premium tiers, no ads.\n\nStart organizing your music collection today with MusicUp!",
+  "category": "MUSIC_AND_AUDIO",
+  "contentRating": "Everyone",
+  "priceType": "PAID",
+  "defaultPrice": "9.99",
+  "currency": "USD",
+  "countries": ["US", "GB", "DE", "FR", "ES", "IT", "NL", "BE", "AT", "CH", "CA", "AU"],
+  "tags": ["music", "collection", "vinyl", "cd", "discogs", "album", "catalog", "organizer", "database", "manager"],
+  "contactDetails": {
+    "contactEmail": "nobo_code@posteo.de",
+    "contactPhone": "",
+    "contactWebsite": "https://github.com/hiphopconnect/musicup"
+  },
+  "privacyPolicyUrl": "https://github.com/hiphopconnect/musicup/blob/main/legal/PRIVACY_POLICY.md",
+  "dataSharing": {
+    "collects_data": false,
+    "shares_data": false,
+    "data_types_collected": [],
+    "data_collection_purposes": [],
+    "data_sharing_purposes": []
+  },
+  "targetSdk": 34,
+  "permissions": {
+    "INTERNET": "Optional - Only for Discogs album search",
+    "READ_EXTERNAL_STORAGE": "For importing collection files",
+    "WRITE_EXTERNAL_STORAGE": "For exporting collection backups"
+  }
+}

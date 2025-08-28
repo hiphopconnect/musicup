@@ -40,14 +40,37 @@ static void my_application_activate(GApplication* application) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "music_up");
+    gtk_header_bar_set_title(header_bar, "MusicUp");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "music_up");
+    gtk_window_set_title(window, "MusicUp");
   }
 
+  // Set WM_CLASS for proper taskbar icon recognition
+  g_object_set(G_OBJECT(window), "application", application, NULL);
+
   gtk_window_set_default_size(window, 1280, 720);
+  
+  // Set the application icon
+  GError* error = nullptr;
+  GdkPixbuf* icon = gdk_pixbuf_new_from_file("linux/music_up_icon.png", &error);
+  if (icon == nullptr) {
+    // Try alternative paths
+    icon = gdk_pixbuf_new_from_file("../linux/music_up_icon.png", &error);
+    if (icon == nullptr) {
+      icon = gdk_pixbuf_new_from_file("/usr/local/bin/music-up/data/flutter_assets/assets/icons/music_up_icon.png", &error);
+      if (icon == nullptr) {
+        // Try installed location
+        icon = gdk_pixbuf_new_from_file("/usr/share/icons/hicolor/256x256/apps/music-up.png", &error);
+      }
+    }
+  }
+  if (icon != nullptr) {
+    gtk_window_set_icon(window, icon);
+    g_object_unref(icon);
+  }
+  
   gtk_widget_show(GTK_WIDGET(window));
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
@@ -117,6 +140,12 @@ static void my_application_class_init(MyApplicationClass* klass) {
 static void my_application_init(MyApplication* self) {}
 
 MyApplication* my_application_new() {
+  // Set the program name to the application ID, which helps various systems
+  // like GTK and desktop environments map this running application to its
+  // corresponding .desktop file. This ensures better integration by allowing
+  // the application to be recognized beyond its binary name.
+  g_set_prgname(APPLICATION_ID);
+
   return MY_APPLICATION(g_object_new(my_application_get_type(),
                                      "application-id", APPLICATION_ID,
                                      "flags", G_APPLICATION_NON_UNIQUE,
