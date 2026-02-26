@@ -3,6 +3,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:music_up/services/logger_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,7 +12,8 @@ class ConfigManager {
   String? _jsonFilePath;
   String? _wantlistFilePath;
   String? _discogsToken;
-  ThemeMode? _themeMode; // NEU
+  ThemeMode? _themeMode;
+  Locale? _locale;
 
   Future<void> loadConfig() async {
     _prefs = await SharedPreferences.getInstance();
@@ -36,6 +38,12 @@ class ConfigManager {
     // Theme Mode laden
     String? themeModeString = _prefs.getString('theme_mode');
     _themeMode = _parseThemeMode(themeModeString);
+
+    // Locale laden
+    String? localeString = _prefs.getString('locale');
+    _locale = _parseLocale(localeString);
+
+    LoggerService.data('Config loaded', null, 'configured=${isConfigured()}');
   }
 
   // ===== COLLECTION FILE PATH METHODS =====
@@ -94,10 +102,31 @@ class ConfigManager {
     }
   }
 
-  Future<void> saveConfig() async {
-    // Config wird bereits in den set-Methoden gespeichert
-    // Diese Methode bleibt für Kompatibilität erhalten
+  // LOCALE METHODS
+  Locale getLocale() {
+    if (_locale != null) return _locale!;
+    // Default: Deutsch fuer bestehende User, sonst Deutsch
+    return const Locale('de');
   }
+
+  Future<void> setLocale(Locale locale) async {
+    _locale = locale;
+    await _prefs.setString('locale', locale.languageCode);
+  }
+
+  Locale? _parseLocale(String? value) {
+    switch (value) {
+      case 'de':
+        return const Locale('de');
+      case 'en':
+        return const Locale('en');
+      default:
+        return null;
+    }
+  }
+
+  @Deprecated('Config wird bereits in den set-Methoden gespeichert')
+  Future<void> saveConfig() async {}
 
   // ===== VALIDATION METHODS =====
   /// Prüft ob alle notwendigen Pfade konfiguriert sind
@@ -140,26 +169,25 @@ class ConfigManager {
     await _prefs.remove('wantlist_file_path');
     await _prefs.remove('discogs_token');
     await _prefs.remove('theme_mode');
+    await _prefs.remove('locale');
     await _prefs.remove('discogs_oauth_token');
     await _prefs.remove('discogs_oauth_token_secret');
     await _prefs.remove('discogs_consumer_key');
     await _prefs.remove('discogs_consumer_secret');
+    await _prefs.remove('setup_completed');
+    await _prefs.remove('tour_completed');
+    await _prefs.remove('log_level');
 
     // Setze interne Variablen zurück
     _jsonFilePath = null;
     _wantlistFilePath = null;
     _discogsToken = null;
     _themeMode = null;
+    _locale = null;
 
     // Lade Standard-Konfiguration neu
     await loadConfig();
-  }
-
-  // ===== MIGRATION HELPERS =====
-  /// Für zukünftige Updates - Migration alter Config-Formate
-  Future<void> migrateConfigIfNeeded() async {
-    // Placeholder für zukünftige Migrations-Logik
-    // z.B. wenn sich die Struktur ändert
+    LoggerService.info('Config', 'Settings reset to defaults');
   }
 
   // ===== DEBUG METHODS =====
@@ -174,6 +202,7 @@ class ConfigManager {
       'is_configured': isConfigured().toString(),
       'has_discogs_token': hasDiscogsToken().toString(),
       'theme_mode': _themeMode?.name ?? 'system',
+      'locale': _locale?.languageCode ?? 'de',
     };
   }
 
@@ -221,5 +250,36 @@ class ConfigManager {
       'consumer_key': _prefs.getString('discogs_consumer_key'),
       'consumer_secret': _prefs.getString('discogs_consumer_secret'),
     };
+  }
+
+  // ===== SETUP WIZARD =====
+  bool isSetupCompleted() {
+    return _prefs.getBool('setup_completed') ?? false;
+  }
+
+  Future<void> setSetupCompleted() async {
+    await _prefs.setBool('setup_completed', true);
+  }
+
+  // ===== GUIDED TOUR =====
+  bool isTourCompleted() {
+    return _prefs.getBool('tour_completed') ?? false;
+  }
+
+  Future<void> setTourCompleted() async {
+    await _prefs.setBool('tour_completed', true);
+  }
+
+  Future<void> resetTourCompleted() async {
+    await _prefs.remove('tour_completed');
+  }
+
+  // ===== LOG LEVEL =====
+  String getLogLevel() {
+    return _prefs.getString('log_level') ?? 'debug';
+  }
+
+  Future<void> setLogLevel(String level) async {
+    await _prefs.setString('log_level', level);
   }
 }

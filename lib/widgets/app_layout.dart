@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/widgets/animated_widgets.dart';
-import 'package:music_up/services/accessibility_service.dart';
 
 class AppLayout extends StatelessWidget {
   final String title;
@@ -20,12 +20,13 @@ class AppLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Semantics(
-      label: 'Bildschirm: $title',
+      label: l10n.screenLabel(title),
       child: Scaffold(
         appBar: AppBar(
           title: Semantics(
-            label: 'Titel: $title',
+            label: l10n.titleLabel(title),
             header: true,
             child: Text(title),
           ),
@@ -41,7 +42,7 @@ class AppLayout extends StatelessWidget {
           }).toList(),
         ),
         body: SafeArea(
-          // SafeArea für besseren Layout-Schutz
+          // SafeArea fuer besseren Layout-Schutz
           child: body,
         ),
         floatingActionButton: floatingActionButton != null
@@ -49,7 +50,7 @@ class AppLayout extends StatelessWidget {
                 delay: const Duration(milliseconds: 500),
                 child: Semantics(
                   button: true,
-                  label: 'Aktions-Button',
+                  label: l10n.actionButton,
                   child: floatingActionButton!,
                 ),
               )

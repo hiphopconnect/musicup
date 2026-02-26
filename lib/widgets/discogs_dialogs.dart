@@ -1,7 +1,9 @@
 // lib/widgets/discogs_dialogs.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/models/album_model.dart';
+import 'package:music_up/theme/app_theme.dart';
 import 'package:music_up/theme/design_system.dart';
 
 class DiscogsDialogs {
@@ -9,6 +11,7 @@ class DiscogsDialogs {
     BuildContext context,
     DiscogsSearchResult result,
   ) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -42,19 +45,19 @@ class DiscogsDialogs {
                     ),
                   ),
                 const SizedBox(height: DS.md),
-                _buildDetailRow('Künstler', result.artist),
-                _buildDetailRow('Jahr', result.year),
-                _buildDetailRow('Format', result.format),
+                _buildDetailRow(l10n.artist, result.artist, l10n),
+                _buildDetailRow(l10n.year, result.year, l10n),
+                _buildDetailRow(l10n.format, result.format, l10n),
                 if (result.genre.isNotEmpty)
-                  _buildDetailRow('Genre', result.genre),
-                _buildDetailRow('Discogs ID', result.id),
+                  _buildDetailRow(l10n.genre, result.genre, l10n),
+                _buildDetailRow('Discogs ID', result.id, l10n),
               ],
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Schließen'),
+              child: Text(l10n.close),
             ),
           ],
         );
@@ -62,7 +65,7 @@ class DiscogsDialogs {
     );
   }
 
-  static Widget _buildDetailRow(String label, String value) {
+  static Widget _buildDetailRow(String label, String value, AppLocalizations l10n) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -76,7 +79,7 @@ class DiscogsDialogs {
             ),
           ),
           Expanded(
-            child: Text(value.isEmpty ? 'Unbekannt' : value),
+            child: Text(value.isEmpty ? l10n.unknown : value),
           ),
         ],
       ),
@@ -87,11 +90,12 @@ class DiscogsDialogs {
     BuildContext context,
     DiscogsSearchResult result,
   ) async {
+    final l10n = AppLocalizations.of(context);
     return showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Zur Sammlung hinzufügen'),
+          title: Text(l10n.addToCollection),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,29 +104,28 @@ class DiscogsDialogs {
                 'Album: ${result.title}',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              Text('Künstler: ${result.artist}'),
-              Text('Jahr: ${result.year}'),
-              Text('Format: ${result.format}'),
+              Text(l10n.artistPrefix(result.artist)),
+              Text(l10n.yearPrefix(result.year)),
+              Text(l10n.formatPrefix(result.format)),
               const SizedBox(height: DS.md),
-              const Text(
-                'Dieses Album wird zu Ihrer Sammlung hinzugefügt. '
-                'Track-Informationen werden von Discogs geladen.',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
+              Text(
+                l10n.addToCollectionDiscogsBody,
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Abbrechen'),
+              child: Text(l10n.cancel),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E4F2E),
+                backgroundColor: AppTheme.darkGreen,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Hinzufügen'),
+              child: Text(l10n.add),
             ),
           ],
         );
@@ -135,11 +138,12 @@ class DiscogsDialogs {
     DiscogsSearchResult result,
     VoidCallback onGoToSettings,
   ) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('OAuth erforderlich'),
+          title: Text(l10n.oauthRequired),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -150,14 +154,13 @@ class DiscogsDialogs {
               ),
               const SizedBox(height: DS.md),
               Text(
-                'Um "${result.title}" zur Wantlist hinzuzufügen, '
-                'benötigen Sie OAuth-Authentifizierung.',
+                l10n.oauthRequiredBody(result.title),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: DS.sm),
-              const Text(
-                'Möchten Sie OAuth in den Einstellungen einrichten?',
-                style: TextStyle(fontWeight: FontWeight.w500),
+              Text(
+                l10n.oauthSetupQuestion,
+                style: const TextStyle(fontWeight: FontWeight.w500),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -165,7 +168,7 @@ class DiscogsDialogs {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Später'),
+              child: Text(l10n.later),
             ),
             ElevatedButton(
               onPressed: () {
@@ -176,7 +179,7 @@ class DiscogsDialogs {
                 backgroundColor: Colors.orange,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Zu Einstellungen'),
+              child: Text(l10n.goToSettings),
             ),
           ],
         );
@@ -185,23 +188,26 @@ class DiscogsDialogs {
   }
 
   static void showNoTokenMessage(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Bitte OAuth in den Einstellungen einrichten.'),
-        duration: Duration(seconds: 3),
+      SnackBar(
+        content: Text(l10n.pleaseConfigureOAuth),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
 
   static void showEmptyQueryMessage(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Bitte Suchbegriffe eingeben')),
+      SnackBar(content: Text(l10n.pleaseEnterSearchTerms)),
     );
   }
 
   static void showSearchErrorMessage(BuildContext context, String error) {
+    final l10n = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Suche fehlgeschlagen: $error')),
+      SnackBar(content: Text(l10n.searchFailed(error))),
     );
   }
 }

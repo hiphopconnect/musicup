@@ -32,6 +32,8 @@ class AlbumEditService {
     required bool? isDigital,
     required List<Track> tracks,
   }) {
+    final cleanTracks = tracks.where((t) => t.title.trim().isNotEmpty).toList();
+
     final updatedAlbum = Album(
       id: originalAlbum.id,
       name: name.trim(),
@@ -40,7 +42,7 @@ class AlbumEditService {
       year: selectedYear ?? 'Unknown',
       medium: selectedMedium ?? 'Unknown',
       digital: isDigital ?? false,
-      tracks: tracks,
+      tracks: cleanTracks,
     );
 
     LoggerService.info('Album updated', '${updatedAlbum.name} by ${updatedAlbum.artist}');
@@ -57,7 +59,6 @@ class AlbumEditService {
     required bool? isDigital,
     required List<Track> tracks,
   }) {
-    // Check basic album info
     if (original.name != name.trim() ||
         original.artist != artist.trim() ||
         original.genre != (genre.trim().isEmpty ? 'Unknown' : genre.trim()) ||
@@ -67,16 +68,14 @@ class AlbumEditService {
       return true;
     }
 
-    // Check tracks count
     if (original.tracks.length != tracks.length) {
       return true;
     }
 
-    // Check individual tracks
     for (int i = 0; i < original.tracks.length; i++) {
       final originalTrack = original.tracks[i];
       final currentTrack = tracks[i];
-      
+
       if (originalTrack.title != currentTrack.title ||
           originalTrack.trackNumber != currentTrack.trackNumber) {
         return true;
@@ -86,6 +85,8 @@ class AlbumEditService {
     return false;
   }
 
+  /// Returns keys instead of localized strings.
+  /// UI layer translates via validation_translations.dart
   List<String> validateAlbumEdit({
     required String name,
     required String artist,
@@ -96,29 +97,28 @@ class AlbumEditService {
     List<String> errors = [];
 
     if (name.trim().isEmpty) {
-      errors.add('Album-Name ist erforderlich');
+      errors.add('editAlbumNameRequired');
     }
 
     if (artist.trim().isEmpty) {
-      errors.add('Künstler ist erforderlich');
+      errors.add('editArtistRequired');
     }
 
     if (selectedMedium == null) {
-      errors.add('Medium muss ausgewählt werden');
+      errors.add('editMediumRequired');
     }
 
     if (isDigital == null) {
-      errors.add('Digital-Status muss ausgewählt werden');
+      errors.add('editDigitalRequired');
     }
 
     if (tracks.isEmpty) {
-      errors.add('Mindestens ein Track ist erforderlich');
+      errors.add('editTrackRequired');
     }
 
-    // Check for empty track titles
     for (int i = 0; i < tracks.length; i++) {
       if (tracks[i].title.trim().isEmpty) {
-        errors.add('Track ${i + 1} benötigt einen Titel');
+        errors.add('editTrackTitleRequired:${i + 1}');
       }
     }
 

@@ -6,7 +6,7 @@ import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:music_up/models/album_model.dart';
-import 'package:music_up/services/json_service.dart';
+import 'package:music_up/services/logger_service.dart';
 import 'package:path/path.dart' as path;
 import 'package:xml/xml.dart';
 
@@ -15,9 +15,7 @@ enum ExportFormat { json, csv, xml }
 enum ImportFormat { json, csv, xml }
 
 class ImportExportService {
-  final JsonService _jsonService;
-
-  ImportExportService(this._jsonService);
+  ImportExportService();
 
   // ===== EXPORT FUNCTIONS =====
 
@@ -30,18 +28,25 @@ class ImportExportService {
       format ??= await _showExportFormatDialog();
       if (format == null) return null;
 
+      LoggerService.info('Export', 'Starting ${format.name} export of ${albums.length} albums');
+
       String? filePath = await _selectSaveLocation(format);
       if (filePath == null) return null;
 
+      String? result;
       switch (format) {
         case ExportFormat.json:
-          return await _exportToJson(albums, filePath);
+          result = await _exportToJson(albums, filePath);
         case ExportFormat.csv:
-          return await _exportToCsv(albums, filePath);
+          result = await _exportToCsv(albums, filePath);
         case ExportFormat.xml:
-          return await _exportToXml(albums, filePath);
+          result = await _exportToXml(albums, filePath);
       }
+
+      LoggerService.success('Export', '${format.name} export to $result');
+      return result;
     } catch (e) {
+      LoggerService.error('Export', e);
       throw Exception('Export failed: $e');
     }
   }
@@ -146,18 +151,25 @@ class ImportExportService {
       format ??= await _showImportFormatDialog();
       if (format == null) return [];
 
+      LoggerService.info('Import', 'Starting ${format.name} import');
+
       String? filePath = await _selectImportFile(format);
       if (filePath == null) return [];
 
+      List<Album> albums;
       switch (format) {
         case ImportFormat.json:
-          return await _importFromJson(filePath);
+          albums = await _importFromJson(filePath);
         case ImportFormat.csv:
-          return await _importFromCsv(filePath);
+          albums = await _importFromCsv(filePath);
         case ImportFormat.xml:
-          return await _importFromXml(filePath);
+          albums = await _importFromXml(filePath);
       }
+
+      LoggerService.success('Import', '${albums.length} albums from ${format.name}');
+      return albums;
     } catch (e) {
+      LoggerService.error('Import', e);
       throw Exception('Import failed: $e');
     }
   }
@@ -199,15 +211,16 @@ class ImportExportService {
           }
         }
 
+        final digitalValue = row[6]?.toString().trim().toLowerCase();
         albums.add(Album(
-          id: row[0]?.toString() ??
+          id: row[0]?.toString().trim() ??
               DateTime.now().millisecondsSinceEpoch.toString(),
-          name: row[1]?.toString() ?? '',
-          artist: row[2]?.toString() ?? '',
-          genre: row[3]?.toString() ?? '',
-          year: row[4]?.toString() ?? '',
-          medium: row[5]?.toString() ?? 'Vinyl',
-          digital: row[6]?.toString().toLowerCase() == 'yes',
+          name: row[1]?.toString().trim() ?? 'Unknown Title',
+          artist: row[2]?.toString().trim() ?? 'Unknown Artist',
+          genre: row[3]?.toString().trim() ?? 'Unknown Genre',
+          year: row[4]?.toString().trim() ?? 'Unknown',
+          medium: row[5]?.toString().trim() ?? 'Unknown',
+          digital: digitalValue == 'yes' || digitalValue == 'ja' || digitalValue == 'true',
           tracks: tracks,
         ));
       }
@@ -225,15 +238,18 @@ class ImportExportService {
     final albumElements = document.findAllElements('Album');
 
     for (XmlElement albumElement in albumElements) {
-      String id = albumElement.findElements('ID').first.innerText;
-      String name = albumElement.findElements('Name').first.innerText;
-      String artist = albumElement.findElements('Artist').first.innerText;
-      String genre = albumElement.findElements('Genre').first.innerText;
-      String year = albumElement.findElements('Year').first.innerText;
-      String medium = albumElement.findElements('Medium').first.innerText;
-      bool digital =
-          albumElement.findElements('Digital').first.innerText.toLowerCase() ==
-              'true';
+      String textOf(String tag, String fallback) {
+        final elements = albumElement.findElements(tag);
+        return elements.isNotEmpty ? elements.first.innerText.trim() : fallback;
+      }
+
+      String id = textOf('ID', DateTime.now().millisecondsSinceEpoch.toString());
+      String name = textOf('Name', 'Unknown Title');
+      String artist = textOf('Artist', 'Unknown Artist');
+      String genre = textOf('Genre', 'Unknown Genre');
+      String year = textOf('Year', 'Unknown');
+      String medium = textOf('Medium', 'Unknown');
+      bool digital = textOf('Digital', 'false').toLowerCase() == 'true';
 
       // Parse tracks
       List<Track> tracks = [];

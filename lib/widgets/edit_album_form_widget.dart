@@ -1,6 +1,7 @@
 // lib/widgets/edit_album_form_widget.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/section_card.dart';
 
@@ -36,45 +37,77 @@ class _EditAlbumFormWidgetState extends State<EditAlbumFormWidget> {
   final int currentYear = DateTime.now().year;
   late List<String> years;
 
+  static const List<String> _knownMediums = [
+    'Vinyl',
+    'CD',
+    'Cassette',
+    'Digital',
+    'Unknown',
+  ];
+
   @override
   void initState() {
     super.initState();
-    years = List.generate(100, (index) => (currentYear - index).toString());
+    years = List.generate(currentYear - 1900 + 1, (index) => (currentYear - index).toString());
+  }
+
+  /// Stellt sicher, dass der Year-Wert im Dropdown vorhanden ist
+  String? _getSafeYear() {
+    if (widget.selectedYear == null) return null;
+    if (years.contains(widget.selectedYear)) return widget.selectedYear;
+    // Wert nicht in Liste - als null behandeln (zeigt Placeholder)
+    return null;
+  }
+
+  /// Stellt sicher, dass der Medium-Wert im Dropdown vorhanden ist
+  List<String> _getMediumItems() {
+    final mediums = List<String>.from(_knownMediums);
+    if (widget.selectedMedium != null && !mediums.contains(widget.selectedMedium)) {
+      mediums.add(widget.selectedMedium!);
+    }
+    return mediums;
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         // Album-Informationen Sektion
         SectionCard(
-          title: "Album-Informationen",
+          title: l10n.albumInformation,
           child: Column(
             children: [
               TextFormField(
                 controller: widget.nameController,
-                decoration: const InputDecoration(
-                  labelText: "Album-Name",
-                  prefixIcon: Icon(Icons.album),
-                  border: OutlineInputBorder(),
+                maxLength: 200,
+                decoration: InputDecoration(
+                  labelText: l10n.albumName,
+                  prefixIcon: const Icon(Icons.album),
+                  border: const OutlineInputBorder(),
+                  counterText: '',
                 ),
               ),
               const SizedBox(height: DS.md),
               TextFormField(
                 controller: widget.artistController,
-                decoration: const InputDecoration(
-                  labelText: "Künstler",
-                  prefixIcon: Icon(Icons.person),
-                  border: OutlineInputBorder(),
+                maxLength: 200,
+                decoration: InputDecoration(
+                  labelText: l10n.artist,
+                  prefixIcon: const Icon(Icons.person),
+                  border: const OutlineInputBorder(),
+                  counterText: '',
                 ),
               ),
               const SizedBox(height: DS.md),
               TextFormField(
                 controller: widget.genreController,
-                decoration: const InputDecoration(
-                  labelText: "Genre",
-                  prefixIcon: Icon(Icons.music_note),
-                  border: OutlineInputBorder(),
+                maxLength: 100,
+                decoration: InputDecoration(
+                  labelText: l10n.genre,
+                  prefixIcon: const Icon(Icons.music_note),
+                  border: const OutlineInputBorder(),
+                  counterText: '',
                 ),
               ),
             ],
@@ -85,17 +118,17 @@ class _EditAlbumFormWidgetState extends State<EditAlbumFormWidget> {
 
         // Format-Einstellungen Sektion
         SectionCard(
-          title: "Format-Einstellungen",
+          title: l10n.formatSettings,
           child: Column(
             children: [
               // Year Dropdown
               DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: "Jahr",
-                  prefixIcon: Icon(Icons.calendar_today),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.year,
+                  prefixIcon: const Icon(Icons.calendar_today),
+                  border: const OutlineInputBorder(),
                 ),
-                value: widget.selectedYear,
+                value: _getSafeYear(),
                 onChanged: widget.onYearChanged,
                 items: years.map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
@@ -108,20 +141,14 @@ class _EditAlbumFormWidgetState extends State<EditAlbumFormWidget> {
 
               // Medium Dropdown
               DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: "Medium",
-                  prefixIcon: Icon(Icons.storage),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.medium,
+                  prefixIcon: const Icon(Icons.storage),
+                  border: const OutlineInputBorder(),
                 ),
                 value: widget.selectedMedium,
                 onChanged: widget.onMediumChanged,
-                items: <String>{
-                  'Vinyl',
-                  'CD',
-                  'Cassette',
-                  'Digital',
-                  'Unknown'
-                }.map<DropdownMenuItem<String>>((String value) {
+                items: _getMediumItems().map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
                     child: Text(value),
@@ -132,25 +159,28 @@ class _EditAlbumFormWidgetState extends State<EditAlbumFormWidget> {
 
               // Digital Status Dropdown
               DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: "Digital verfügbar",
-                  prefixIcon: Icon(Icons.cloud),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.digitalAvailable,
+                  prefixIcon: const Icon(Icons.cloud),
+                  border: const OutlineInputBorder(),
                 ),
                 value: widget.isDigital != null
-                    ? (widget.isDigital! ? "Ja" : "Nein")
+                    ? (widget.isDigital! ? 'true' : 'false')
                     : null,
                 onChanged: (String? newValue) {
-                  final digitalValue = newValue == "Ja" ? true : false;
+                  final digitalValue = newValue == 'true';
                   widget.onDigitalChanged?.call(digitalValue);
                 },
-                items: <String>['Ja', 'Nein']
-                    .map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
+                items: [
+                  DropdownMenuItem<String>(
+                    value: 'true',
+                    child: Text(l10n.yes),
+                  ),
+                  DropdownMenuItem<String>(
+                    value: 'false',
+                    child: Text(l10n.no),
+                  ),
+                ],
               ),
             ],
           ),

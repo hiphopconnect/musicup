@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/theme/design_system.dart';
 
 class SearchBarWidget extends StatelessWidget {
   final TextEditingController controller;
-  final String hintText;
+  final String? hintText;
   final VoidCallback? onSearch;
   final bool enabled;
 
   const SearchBarWidget({
     super.key,
     required this.controller,
-    this.hintText = 'Search...',
+    this.hintText,
     this.onSearch,
     this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.all(DS.md),
       child: Row(
@@ -26,7 +28,7 @@ class SearchBarWidget extends StatelessWidget {
               controller: controller,
               enabled: enabled,
               decoration: InputDecoration(
-                hintText: hintText,
+                hintText: hintText ?? l10n.searchHint,
                 prefixIcon: const Icon(Icons.search),
                 border: const OutlineInputBorder(),
               ),
@@ -37,7 +39,7 @@ class SearchBarWidget extends StatelessWidget {
             const SizedBox(width: DS.xs),
             ElevatedButton(
               onPressed: enabled ? onSearch : null,
-              child: const Text('Search'),
+              child: Text(l10n.search),
             ),
           ],
         ],

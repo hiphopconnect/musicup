@@ -1,6 +1,7 @@
 // lib/widgets/album_filters_widget.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/theme/design_system.dart';
 
 class AlbumFiltersWidget extends StatelessWidget {
@@ -25,8 +26,9 @@ class AlbumFiltersWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return ExpansionTile(
-      title: const Text('Filter & Sort'),
+      title: Text(l10n.filterAndSort),
       leading: const Icon(Icons.filter_list),
       children: [
         Padding(
@@ -34,9 +36,9 @@ class AlbumFiltersWidget extends StatelessWidget {
           child: Column(
             children: [
               // Medium filters
-              const Text(
-                'Medium Filter:',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Text(
+                l10n.mediumFilter,
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: DS.xs),
               Wrap(
@@ -51,31 +53,31 @@ class AlbumFiltersWidget extends StatelessWidget {
                   );
                 }).toList(),
               ),
-              
+
               // Reset filters button
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   TextButton.icon(
                     icon: const Icon(Icons.refresh),
-                    label: const Text('Reset Filters'),
+                    label: Text(l10n.resetFilters),
                     onPressed: onResetFilters,
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: DS.md),
-              
+
               // Sort order control
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('Sort:'),
+                  Text(l10n.sorting),
                   const SizedBox(width: DS.sm),
                   ElevatedButton.icon(
                     icon: Icon(
-                      isAscending 
-                        ? Icons.sort_by_alpha 
+                      isAscending
+                        ? Icons.sort_by_alpha
                         : Icons.sort_by_alpha_outlined
                     ),
                     label: Text(isAscending ? 'A-Z' : 'Z-A'),
@@ -83,21 +85,21 @@ class AlbumFiltersWidget extends StatelessWidget {
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: DS.md),
-              
+
               // Digital status filter
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('Digital:'),
+                  Text(l10n.digitalLabel),
                   const SizedBox(width: DS.sm),
                   DropdownButton<String>(
                     value: digitalFilter,
-                    items: const [
-                      DropdownMenuItem(value: 'All', child: Text('All')),
-                      DropdownMenuItem(value: 'Yes', child: Text('Yes')),
-                      DropdownMenuItem(value: 'No', child: Text('No')),
+                    items: [
+                      DropdownMenuItem(value: 'All', child: Text(l10n.all)),
+                      DropdownMenuItem(value: 'Yes', child: Text(l10n.yes)),
+                      DropdownMenuItem(value: 'No', child: Text(l10n.no)),
                     ],
                     onChanged: (String? newValue) {
                       if (newValue != null) {
@@ -119,7 +121,7 @@ class AlbumSearchWidget extends StatelessWidget {
   final TextEditingController searchController;
   final String searchCategory;
   final Function(String) onSearchCategoryChanged;
-  
+
   const AlbumSearchWidget({
     super.key,
     required this.searchController,
@@ -129,6 +131,7 @@ class AlbumSearchWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.all(DS.sm),
       child: Row(
@@ -136,10 +139,10 @@ class AlbumSearchWidget extends StatelessWidget {
           // Dropdown for search category
           DropdownButton<String>(
             value: searchCategory,
-            items: const [
-              DropdownMenuItem(value: 'Album', child: Text('Album')),
-              DropdownMenuItem(value: 'Artist', child: Text('Artist')),
-              DropdownMenuItem(value: 'Song', child: Text('Song')),
+            items: [
+              const DropdownMenuItem(value: 'Album', child: Text('Album')),
+              DropdownMenuItem(value: 'Artist', child: Text(l10n.artist)),
+              DropdownMenuItem(value: 'Song', child: Text(l10n.titleCategory)),
             ],
             onChanged: (String? newValue) {
               if (newValue != null) {
@@ -148,7 +151,7 @@ class AlbumSearchWidget extends StatelessWidget {
             },
           ),
           const SizedBox(width: DS.sm),
-          
+
           // Search field
           Expanded(
             child: ValueListenableBuilder<TextEditingValue>(
@@ -157,9 +160,9 @@ class AlbumSearchWidget extends StatelessWidget {
                 return TextField(
                   controller: searchController,
                   decoration: InputDecoration(
-                    hintText: "Search...",
+                    hintText: l10n.searchHint,
                     prefixIcon: const Icon(Icons.search),
-                    suffixIcon: value.text.isNotEmpty 
+                    suffixIcon: value.text.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear),
                           onPressed: () => searchController.clear(),

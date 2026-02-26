@@ -1,9 +1,13 @@
 // lib/screens/edit_album_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
+import 'package:music_up/l10n/validation_translations.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/services/album_edit_service.dart';
-import 'package:music_up/services/json_service.dart';
+import 'package:music_up/services/logger_service.dart';
+import 'package:music_up/services/service_locator.dart';
+import 'package:music_up/theme/app_theme.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/app_layout.dart';
 import 'package:music_up/widgets/edit_album_form_widget.dart';
@@ -11,9 +15,8 @@ import 'package:music_up/widgets/track_management_widget.dart';
 
 class EditAlbumScreen extends StatefulWidget {
   final Album album;
-  final JsonService? jsonService;
 
-  const EditAlbumScreen({super.key, required this.album, this.jsonService});
+  const EditAlbumScreen({super.key, required this.album});
 
   @override
   EditAlbumScreenState createState() => EditAlbumScreenState();
@@ -37,10 +40,10 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     _editService = AlbumEditService();
     _originalAlbum = widget.album;
-    
+
     _initializeFormData();
     _loadTracksIfNeeded();
   }
@@ -65,14 +68,14 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
   }
 
   Future<void> _loadTracksIfNeeded() async {
-    if (_originalAlbum.tracks.isNotEmpty || widget.jsonService == null) {
+    if (_originalAlbum.tracks.isNotEmpty) {
       return;
     }
 
     setState(() => _isLoadingTracks = true);
-    
+
     try {
-      final albumWithTracks = await widget.jsonService!.loadAlbumWithTracks(_originalAlbum.id);
+      final albumWithTracks = await sl.jsonService.loadAlbumWithTracks(_originalAlbum.id);
       if (mounted && albumWithTracks != null) {
         setState(() {
           _tracks = _editService.createEditableCopy(albumWithTracks).tracks;
@@ -82,6 +85,7 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
         setState(() => _isLoadingTracks = false);
       }
     } catch (e) {
+      LoggerService.error('Track loading', e, 'EditAlbumScreen');
       if (mounted) {
         setState(() => _isLoadingTracks = false);
       }
@@ -111,24 +115,23 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
   }
 
   Future<bool?> _showUnsavedChangesDialog() async {
+    final l10n = AppLocalizations.of(context);
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Ungespeicherte Änderungen'),
-          content: const Text(
-            'Sie haben ungespeicherte Änderungen. Möchten Sie diese verwerfen?',
-          ),
+          title: Text(l10n.unsavedChanges),
+          content: Text(l10n.unsavedChangesMessage),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Bearbeitung fortsetzen'),
+              child: Text(l10n.continueEditing),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Änderungen verwerfen'),
+              child: Text(l10n.discardChanges),
             ),
           ],
         );
@@ -146,6 +149,7 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
     );
 
     if (validationErrors.isNotEmpty) {
+      LoggerService.warning('Album edit validation', '${validationErrors.length} errors');
       _showValidationErrors(validationErrors);
       return;
     }
@@ -161,24 +165,26 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
       tracks: _tracks,
     );
 
+    LoggerService.success('Album edited', updatedAlbum.name);
     Navigator.pop(context, updatedAlbum);
   }
 
   void _showValidationErrors(List<String> errors) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Validierungsfehler'),
+          title: Text(l10n.validationError),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: errors.map((error) => Text('• $error')).toList(),
+            children: errors.map((error) => Text('• ${translateEditValidation(l10n, error)}')).toList(),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
+              child: Text(l10n.ok),
             ),
           ],
         );
@@ -188,25 +194,26 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) {
           final shouldPop = await _onWillPop();
-          if (shouldPop && mounted) {
+          if (shouldPop && context.mounted) {
             Navigator.of(context).pop();
           }
         }
       },
       child: AppLayout(
-        title: 'Album bearbeiten',
-        appBarColor: const Color(0xFF556B2F), // Olive green
+        title: l10n.editAlbum,
+        appBarColor: AppTheme.oliveGreen, // Olive green
         actions: [
           if (_hasUnsavedChanges())
             IconButton(
               onPressed: _saveAlbum,
               icon: const Icon(Icons.save),
-              tooltip: 'Änderungen speichern',
+              tooltip: l10n.saveChanges,
             ),
         ],
         body: SingleChildScrollView(
@@ -231,12 +238,12 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
 
               // Track Management
               _isLoadingTracks
-                  ? const Center(
+                  ? Center(
                       child: Column(
                         children: [
-                          CircularProgressIndicator(),
-                          SizedBox(height: 8),
-                          Text('Tracks werden geladen...'),
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 8),
+                          Text(l10n.tracksLoading),
                         ],
                       ),
                     )
@@ -254,7 +261,7 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _saveAlbum,
                   icon: const Icon(Icons.save),
-                  label: const Text('Änderungen speichern'),
+                  label: Text(l10n.saveChanges),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
                     foregroundColor: Colors.white,
@@ -271,12 +278,12 @@ class EditAlbumScreenState extends State<EditAlbumScreen> {
                 child: OutlinedButton.icon(
                   onPressed: () async {
                     final shouldDiscard = await _showUnsavedChangesDialog();
-                    if (shouldDiscard == true && mounted) {
+                    if (shouldDiscard == true && context.mounted) {
                       Navigator.of(context).pop();
                     }
                   },
                   icon: const Icon(Icons.cancel_outlined),
-                  label: const Text('Änderungen verwerfen'),
+                  label: Text(l10n.discardChanges),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.all(DS.md),
                     textStyle: const TextStyle(fontSize: 16),

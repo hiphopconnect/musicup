@@ -1,6 +1,8 @@
 // lib/screens/add_album_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
+import 'package:music_up/l10n/validation_translations.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/services/folder_import_service.dart';
 import 'package:music_up/services/logger_service.dart';
@@ -8,6 +10,7 @@ import 'package:music_up/services/validation_service.dart';
 import 'package:music_up/services/auto_save_service.dart';
 import 'package:music_up/services/toast_service.dart';
 import 'package:music_up/services/accessibility_service.dart';
+import 'package:music_up/theme/app_theme.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/album_form_widget.dart';
 import 'package:music_up/widgets/app_layout.dart';
@@ -33,7 +36,6 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
   String? _selectedMedium;
   bool? _isDigital;
   List<Track> _tracks = [];
-  bool _hasUnsavedChanges = false;
 
   @override
   void initState() {
@@ -65,10 +67,6 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
   }
 
   void _triggerAutoSave() {
-    setState(() {
-      _hasUnsavedChanges = true;
-    });
-
     final formData = {
       'name': _nameController.text,
       'artist': _artistController.text,
@@ -93,19 +91,20 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
   }
 
   Future<bool?> _showLoadDraftDialog() {
+    final l10n = AppLocalizations.of(context);
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Entwurf gefunden'),
-        content: const Text('Es wurde ein gespeicherter Entwurf gefunden. Möchten Sie ihn laden?'),
+        title: Text(l10n.draftFound),
+        content: Text(l10n.draftFoundMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Nein'),
+            child: Text(l10n.no),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Ja, laden'),
+            child: Text(l10n.loadDraft),
           ),
         ],
       ),
@@ -122,42 +121,42 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
         _selectedYear = formData['year'];
         _selectedMedium = formData['medium'];
         _isDigital = formData['digital'];
-        
+
         final tracksData = formData['tracks'] as List<dynamic>? ?? [];
         _tracks = tracksData.map((t) => Track(
           trackNumber: t['trackNumber'] ?? '',
           title: t['title'] ?? '',
         )).toList();
-        
+
         if (_tracks.isEmpty) {
           _initializeWithEmptyTrack();
         }
-        
-        _hasUnsavedChanges = true;
-      });
-      
-      ToastService.showInfo(context, 'Entwurf geladen');
+
+        });
+
+      final l10n = AppLocalizations.of(context);
+      ToastService.showInfo(context, l10n.draftLoaded);
     }
   }
 
   Future<bool> _onWillPop() async {
+    final l10n = AppLocalizations.of(context);
     bool? shouldPop = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Änderungen speichern?'),
-        content: const Text(
-            'Möchten Sie das neue Album vor dem Verlassen der Seite speichern?'),
+        title: Text(l10n.saveChangesQuestion),
+        content: Text(l10n.saveChangesBeforeLeaving),
         actions: [
           TextButton(
-            child: const Text('Abbrechen'),
+            child: Text(l10n.cancel),
             onPressed: () => Navigator.of(context).pop(false),
           ),
           TextButton(
-            child: const Text('Nicht speichern'),
+            child: Text(l10n.dontSave),
             onPressed: () => Navigator.of(context).pop(true),
           ),
           TextButton(
-            child: const Text('Speichern & Verlassen'),
+            child: Text(l10n.saveAndLeave),
             onPressed: () {
               Navigator.of(context).pop(false); // Don't pop automatically
               _saveAlbum(); // This will save and pop
@@ -185,9 +184,10 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
           _isDigital = true;
         });
 
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${newAlbum.tracks.length} Tracks aus "${newAlbum.name}" importiert'),
+            content: Text(l10n.tracksImported(newAlbum.tracks.length, newAlbum.name)),
             backgroundColor: Colors.green,
           ),
         );
@@ -195,9 +195,10 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
     } catch (e) {
       LoggerService.error('Folder import', e);
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Fehler beim Importieren: $e'),
+          content: Text(l10n.errorImporting('$e')),
           backgroundColor: Colors.red,
         ),
       );
@@ -205,57 +206,65 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
   }
 
   void _saveAlbum([Album? prefilledAlbum]) {
+    final l10n = AppLocalizations.of(context);
     // Album-Name und Künstler sind PFLICHT, Rest optional
     final validationErrors = <String>[];
-    
+
     final nameError = ValidationService.validateAlbumName(_nameController.text);
     if (nameError != null) validationErrors.add(nameError);
-    
+
     final artistError = ValidationService.validateArtistName(_artistController.text);
     if (artistError != null) validationErrors.add(artistError);
-    
+
     final genreError = ValidationService.validateGenre(_genreController.text);
     if (genreError != null) validationErrors.add(genreError);
-    
+
     final yearError = ValidationService.validateYear(_selectedYear);
     if (yearError != null) validationErrors.add(yearError);
-    
+
     final mediumError = ValidationService.validateMedium(_selectedMedium);
     if (mediumError != null) validationErrors.add(mediumError);
-    
+
+    // Leere Track-Titel pruefen
+    final nonEmptyTracks = _tracks.where((t) => t.title.trim().isNotEmpty).toList();
+    if (nonEmptyTracks.isEmpty) {
+      validationErrors.add(l10n.trackWithTitleRequired);
+    }
+
     if (validationErrors.isNotEmpty) {
-      ToastService.showError(context, validationErrors.first);
+      ToastService.showError(context, translateValidation(l10n, validationErrors.first));
       AccessibilityAnnouncer.validationError(context, validationErrors.first);
       return;
     }
+
+    // Leere Tracks rausfiltern
+    final cleanTracks = nonEmptyTracks;
 
     var uuid = const Uuid();
     Album newAlbum = prefilledAlbum ??
         Album(
           id: uuid.v4(),
-          name: _nameController.text.trim(), // Pflicht-Felder wie eingegeben
-          artist: _artistController.text.trim(), // Pflicht-Felder wie eingegeben
+          name: _nameController.text.trim(),
+          artist: _artistController.text.trim(),
           genre: ValidationService.getGenreOrDefault(_genreController.text),
           year: ValidationService.getYearOrDefault(_selectedYear),
           medium: ValidationService.getMediumOrDefault(_selectedMedium),
           digital: ValidationService.getDigitalOrDefault(_isDigital),
-          tracks: _tracks,
+          tracks: cleanTracks,
         );
-    
+
     // Draft löschen nach erfolgreichem Speichern
     _autoSaveService.clearFormData('add_album');
-    setState(() {
-      _hasUnsavedChanges = false;
-    });
-    
+
     LoggerService.info('Album created', '${newAlbum.name} by ${newAlbum.artist}');
-    ToastService.showSuccess(context, 'Album "${newAlbum.name}" erfolgreich hinzugefügt');
+    ToastService.showSuccess(context, l10n.albumAddedSuccess(newAlbum.name));
     AccessibilityAnnouncer.albumAdded(context, newAlbum.name, newAlbum.artist);
     Navigator.pop(context, newAlbum);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -267,18 +276,18 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
         }
       },
       child: AppLayout(
-        title: 'Neues Album hinzufügen',
-        appBarColor: const Color(0xFF2E4F2E), // Dark green
+        title: l10n.addNewAlbum,
+        appBarColor: AppTheme.darkGreen, // Dark green
         actions: [
           IconButton(
             onPressed: _addAlbumFromFolder,
             icon: const Icon(Icons.folder_open),
-            tooltip: 'Aus Ordner importieren',
+            tooltip: l10n.importFromFolder,
           ),
           IconButton(
             onPressed: () => _saveAlbum(),
             icon: const Icon(Icons.save),
-            tooltip: 'Album speichern',
+            tooltip: l10n.saveAlbum,
           ),
         ],
         body: SingleChildScrollView(
@@ -316,9 +325,9 @@ class AddAlbumScreenState extends State<AddAlbumScreen> {
                 child: ElevatedButton.icon(
                   onPressed: () => _saveAlbum(),
                   icon: const Icon(Icons.save),
-                  label: const Text('Album speichern'),
+                  label: Text(l10n.saveAlbum),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E4F2E), // Dark green
+                    backgroundColor: AppTheme.darkGreen, // Dark green
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.all(DS.md),
                     textStyle: const TextStyle(fontSize: 16),

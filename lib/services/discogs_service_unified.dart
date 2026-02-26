@@ -10,26 +10,28 @@ import 'package:music_up/services/logger_service.dart';
 
 class DiscogsServiceUnified {
   final ConfigManager _configManager;
+  final http.Client _httpClient;
   DiscogsOAuthService? _oauthService;
 
   final String _baseUrl = 'https://api.discogs.com';
   final String _userAgent =
-      'MusicUp/2.1.0 +https://github.com/hiphopconnect/musicup';
+      'MusicUp/2.2.0 +https://github.com/hiphopconnect/musicup';
 
-  DiscogsServiceUnified(this._configManager);
+  String? _cachedConsumerKey;
+  String? _cachedConsumerSecret;
+  String? _cachedToken;
+  String? _cachedTokenSecret;
+
+  DiscogsServiceUnified(this._configManager, {http.Client? httpClient})
+      : _httpClient = httpClient ?? http.Client();
 
   // Nur OAuth
   bool get hasAuth => _configManager.hasDiscogsOAuthTokens();
 
   bool get hasWriteAccess => _configManager.hasDiscogsOAuthTokens();
 
-  Map<String, String> _createHeaders(String method, String url) {
-    return _createOAuthHeaders(method, url);
-  }
-
   Map<String, String> _createOAuthHeaders(String method, String url) {
-    // FIXED: Immer OAuth-Service neu initialisieren um Token-Updates zu berücksichtigen
-    _initializeOAuth();
+    _ensureOAuthInitialized();
 
     if (_oauthService == null || !_oauthService!.isAuthenticated) {
       throw Exception('OAuth nicht verfügbar oder nicht authentifiziert');
@@ -42,22 +44,34 @@ class DiscogsServiceUnified {
     };
   }
 
-  void _initializeOAuth() {
+  void _ensureOAuthInitialized() {
     final creds = _configManager.getDiscogsConsumerCredentials();
     final tokens = _configManager.getDiscogsOAuthTokens();
 
     final key = creds['consumer_key'] ?? '';
     final secret = creds['consumer_secret'] ?? '';
+    final token = tokens['token'];
+    final tokenSecret = tokens['secret'];
+
+    // Nur neu erstellen wenn sich Credentials oder Tokens geaendert haben
+    if (key == _cachedConsumerKey &&
+        secret == _cachedConsumerSecret &&
+        token == _cachedToken &&
+        tokenSecret == _cachedTokenSecret &&
+        _oauthService != null) {
+      return;
+    }
+
+    _cachedConsumerKey = key;
+    _cachedConsumerSecret = secret;
+    _cachedToken = token;
+    _cachedTokenSecret = tokenSecret;
 
     if (key.isNotEmpty && secret.isNotEmpty) {
-      // FIXED: Immer neuen Service erstellen oder existierenden aktualisieren
       _oauthService = DiscogsOAuthService(
         consumerKey: key,
         consumerSecret: secret,
       );
-
-      final token = tokens['token'];
-      final tokenSecret = tokens['secret'];
 
       if (token != null &&
           tokenSecret != null &&
@@ -70,7 +84,6 @@ class DiscogsServiceUnified {
             'OAuth Init', 'Service created but no access tokens found');
       }
     } else {
-      // FIXED: Service auf null setzen wenn Credentials fehlen
       _oauthService = null;
       LoggerService.warning(
           'OAuth Init', 'Service set to null - missing consumer credentials');
@@ -81,7 +94,7 @@ class DiscogsServiceUnified {
     if (!hasAuth) return false;
     try {
       final url = '$_baseUrl/oauth/identity';
-      final response = await http.get(Uri.parse(url),
+      final response = await _httpClient.get(Uri.parse(url),
           headers: _createOAuthHeaders('GET', url));
       LoggerService.api('oauth/identity', response.statusCode);
       return response.statusCode == 200;
@@ -102,8 +115,8 @@ class DiscogsServiceUnified {
 
       final firstUrl = '$urlBase?per_page=100&page=1';
 
-      final firstResp = await http.get(Uri.parse(firstUrl),
-          headers: _createHeaders('GET', firstUrl));
+      final firstResp = await _httpClient.get(Uri.parse(firstUrl),
+          headers: _createOAuthHeaders('GET', firstUrl));
       if (firstResp.statusCode != 200) {
         throw Exception(
             'Wantlist-Abruf fehlgeschlagen: ${firstResp.statusCode} - ${firstResp.body}');
@@ -118,8 +131,8 @@ class DiscogsServiceUnified {
 
       for (int page = 2; page <= totalPages; page++) {
         final pageUrl = '$urlBase?per_page=100&page=$page';
-        final pageResp = await http.get(Uri.parse(pageUrl),
-            headers: _createHeaders('GET', pageUrl));
+        final pageResp = await _httpClient.get(Uri.parse(pageUrl),
+            headers: _createOAuthHeaders('GET', pageUrl));
         if (pageResp.statusCode != 200) {
           throw Exception(
               'Wantlist-Seite $page fehlgeschlagen: ${pageResp.statusCode}');
@@ -177,10 +190,10 @@ class DiscogsServiceUnified {
       final username = await _getOAuthUsername();
       final url = '$_baseUrl/users/$username/wants/$releaseId';
 
-      final response = await http.put(
+      final response = await _httpClient.put(
         Uri.parse(url),
         headers: {
-          ..._createHeaders('PUT', url),
+          ..._createOAuthHeaders('PUT', url),
           'Content-Type': 'application/json',
         },
         body: '{}',
@@ -209,8 +222,8 @@ class DiscogsServiceUnified {
       final username = await _getOAuthUsername();
       final url = '$_baseUrl/users/$username/wants/$releaseId';
 
-      final response = await http.delete(Uri.parse(url),
-          headers: _createHeaders('DELETE', url));
+      final response = await _httpClient.delete(Uri.parse(url),
+          headers: _createOAuthHeaders('DELETE', url));
 
       if (response.statusCode != 204 &&
           response.statusCode != 200 &&
@@ -226,17 +239,44 @@ class DiscogsServiceUnified {
     }
   }
 
-  Future<List<Map<String, dynamic>>> searchReleases(String query) async {
+  Future<List<Map<String, dynamic>>> searchReleases(
+    String query, {
+    String? artist,
+    String? releaseTitle,
+    String? format,
+    String? country,
+  }) async {
     if (!hasAuth) {
       throw Exception('Keine Discogs-Authentifizierung verfügbar');
     }
 
     try {
-      final url =
-          '$_baseUrl/database/search?q=${Uri.encodeComponent(query)}&type=release';
+      final params = <String, String>{
+        'type': 'release',
+      };
+
+      if (query.isNotEmpty) {
+        params['q'] = query;
+      }
+      if (artist != null && artist.isNotEmpty) {
+        params['artist'] = artist;
+      }
+      if (releaseTitle != null && releaseTitle.isNotEmpty) {
+        params['release_title'] = releaseTitle;
+      }
+      if (format != null && format.isNotEmpty) {
+        params['format'] = format;
+      }
+      if (country != null && country.isNotEmpty) {
+        params['country'] = country;
+      }
+
+      final uri = Uri.parse('$_baseUrl/database/search')
+          .replace(queryParameters: params);
+      final url = uri.toString();
 
       final response =
-          await http.get(Uri.parse(url), headers: _createHeaders('GET', url));
+          await _httpClient.get(uri, headers: _createOAuthHeaders('GET', url));
 
       if (response.statusCode != 200) {
         throw Exception(
@@ -262,7 +302,7 @@ class DiscogsServiceUnified {
       final url = '$_baseUrl/releases/$releaseId';
 
       final response =
-          await http.get(Uri.parse(url), headers: _createHeaders('GET', url));
+          await _httpClient.get(Uri.parse(url), headers: _createOAuthHeaders('GET', url));
 
       if (response.statusCode != 200) {
         LoggerService.api('releases/$releaseId', response.statusCode);
@@ -298,7 +338,7 @@ class DiscogsServiceUnified {
 
   Future<String> _getOAuthUsername() async {
     final url = '$_baseUrl/oauth/identity';
-    final response = await http.get(Uri.parse(url),
+    final response = await _httpClient.get(Uri.parse(url),
         headers: _createOAuthHeaders('GET', url));
 
     if (response.statusCode != 200) {

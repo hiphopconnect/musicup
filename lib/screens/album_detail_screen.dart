@@ -1,17 +1,19 @@
 // lib/screens/album_detail_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/screens/edit_album_screen.dart';
+import 'package:music_up/services/logger_service.dart';
+import 'package:music_up/services/service_locator.dart';
+import 'package:music_up/theme/app_theme.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/app_layout.dart';
-import 'package:music_up/services/json_service.dart';
 
 class AlbumDetailScreen extends StatefulWidget {
   final Album album;
-  final JsonService? jsonService;
 
-  const AlbumDetailScreen({super.key, required this.album, this.jsonService});
+  const AlbumDetailScreen({super.key, required this.album});
 
   @override
   State<AlbumDetailScreen> createState() => _AlbumDetailScreenState();
@@ -28,15 +30,15 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   }
 
   Future<void> _loadTracksIfNeeded() async {
-    if (widget.album.tracks.isNotEmpty || widget.jsonService == null) {
+    if (widget.album.tracks.isNotEmpty) {
       _albumWithTracks = widget.album;
       return;
     }
 
     setState(() => _isLoadingTracks = true);
-    
+
     try {
-      final albumWithTracks = await widget.jsonService!.loadAlbumWithTracks(widget.album.id);
+      final albumWithTracks = await sl.jsonService.loadAlbumWithTracks(widget.album.id);
       if (mounted) {
         setState(() {
           _albumWithTracks = albumWithTracks ?? widget.album;
@@ -44,6 +46,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         });
       }
     } catch (e) {
+      LoggerService.error('Track loading', e, 'AlbumDetailScreen');
       if (mounted) {
         setState(() {
           _albumWithTracks = widget.album;
@@ -57,14 +60,15 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AppLayout(
       title: widget.album.name,
-      appBarColor: const Color(0xFF2C2C2C), // Charcoal
+      appBarColor: AppTheme.charcoal, // Charcoal
       actions: [
         IconButton(
           onPressed: () => _editAlbum(context),
           icon: const Icon(Icons.edit),
-          tooltip: 'Album bearbeiten',
+          tooltip: l10n.editAlbum,
         ),
       ],
       body: SingleChildScrollView(
@@ -127,15 +131,15 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     switch (album.medium) {
       case 'Vinyl':
         iconData = Icons.album;
-        iconColor = const Color(0xFF2E4F2E); // Dark green
+        iconColor = AppTheme.darkGreen; // Dark green
         break;
       case 'CD':
         iconData = Icons.album;
-        iconColor = const Color(0xFF556B2F); // Olive green
+        iconColor = AppTheme.oliveGreen; // Olive green
         break;
       case 'Cassette':
         iconData = Icons.library_music;
-        iconColor = const Color(0xFF2C2C2C); // Charcoal
+        iconColor = AppTheme.charcoal; // Charcoal
         break;
       case 'Digital':
         iconData = Icons.cloud;
@@ -154,21 +158,22 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   }
 
   Widget _buildAlbumInfo() {
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(DS.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Album-Informationen',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              l10n.albumInformation,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: DS.md),
-            _buildInfoRow('Jahr', album.year),
-            _buildInfoRow('Medium', album.medium),
-            _buildInfoRow('Digital verfügbar', album.digital ? 'Ja' : 'Nein'),
-            if (album.genre.isNotEmpty) _buildInfoRow('Genre', album.genre),
+            _buildInfoRow(l10n.year, album.year),
+            _buildInfoRow(l10n.medium, album.medium),
+            _buildInfoRow(l10n.digitalAvailable, album.digital ? l10n.yes : l10n.no),
+            if (album.genre.isNotEmpty) _buildInfoRow(l10n.genre, album.genre),
           ],
         ),
       ),
@@ -197,21 +202,22 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   }
 
   Widget _buildTracksList() {
+    final l10n = AppLocalizations.of(context);
     if (_isLoadingTracks) {
       return Card(
         child: Padding(
           padding: const EdgeInsets.all(DS.md),
           child: Column(
             children: [
-              const Text(
-                'Trackliste',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                l10n.trackList,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: DS.md),
               const CircularProgressIndicator(),
               const SizedBox(height: DS.sm),
               Text(
-                'Tracks werden geladen...',
+                l10n.tracksLoading,
                 style: TextStyle(color: Colors.grey[600]),
               ),
             ],
@@ -219,20 +225,20 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         ),
       );
     }
-    
+
     if (album.tracks.isEmpty) {
       return Card(
         child: Padding(
           padding: const EdgeInsets.all(DS.md),
           child: Column(
             children: [
-              const Text(
-                'Trackliste',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                l10n.trackList,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: DS.md),
               Text(
-                'Keine Tracks verfügbar',
+                l10n.noTracksAvailable,
                 style: TextStyle(color: Colors.grey[600]),
               ),
             ],
@@ -248,7 +254,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Trackliste (${album.tracks.length} Tracks)',
+              l10n.trackListCount(album.tracks.length),
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: DS.md),
@@ -288,7 +294,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     final editedAlbum = await Navigator.push<Album>(
       context,
       MaterialPageRoute(
-        builder: (context) => EditAlbumScreen(album: album, jsonService: widget.jsonService),
+        builder: (context) => EditAlbumScreen(album: album),
       ),
     );
 

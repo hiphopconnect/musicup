@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/widgets/album_list_widget.dart';
+import 'package:music_up/widgets/loading_widget.dart';
 
 void main() {
   group('AlbumListWidget Tests', () {
@@ -35,6 +38,14 @@ void main() {
     testWidgets('Displays loading indicator when loading', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: AlbumListWidget(
               albums: [],
@@ -47,12 +58,20 @@ void main() {
         ),
       );
 
-      expect(find.byType(CircularProgressIndicator), findsWidgets);
+      expect(find.byType(SkeletonLoadingList), findsOneWidget);
     });
 
     testWidgets('Displays empty state when no albums', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: AlbumListWidget(
               albums: [],
@@ -73,6 +92,14 @@ void main() {
     testWidgets('Displays list of albums', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: AlbumListWidget(
               albums: testAlbums,
@@ -94,6 +121,14 @@ void main() {
     testWidgets('Shows correct medium icons', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: AlbumListWidget(
               albums: testAlbums,
@@ -113,6 +148,14 @@ void main() {
     testWidgets('Edit and delete buttons are visible', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: AlbumListWidget(
               albums: testAlbums,
@@ -135,6 +178,14 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: AlbumListWidget(
               albums: testAlbums,
@@ -159,6 +210,14 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: AlbumListWidget(
               albums: testAlbums,
@@ -183,6 +242,14 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: AlbumListWidget(
               albums: testAlbums,
@@ -217,6 +284,14 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: AlbumListWidget(
               albums: manyAlbums,
@@ -242,6 +317,14 @@ void main() {
     testWidgets('Cards have correct styling', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: AlbumListWidget(
               albums: testAlbums,
@@ -276,6 +359,14 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: AlbumListWidget(
               albums: [longNameAlbum],

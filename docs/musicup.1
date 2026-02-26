@@ -1,0 +1,68 @@
+.TH MUSICUP 1 "Februar 2026" "2.2.0" "MusicUp Manual"
+.SH NAME
+musicup \- Musiksammlungs-Manager fuer Linux und Android
+.SH SYNOPSIS
+.B musicup
+[\fIOPTIONEN\fR]
+.SH BESCHREIBUNG
+MusicUp verwaltet deine Musiksammlung auf Linux und Android\&. Alben lassen sich manuell anlegen, aus Ordnerstrukturen importieren oder ueber die Discogs-Datenbank suchen und hinzufuegen\&.
+.SH SAMMLUNG VERWALTEN
+Alben anlegen mit Name, Kuenstler, Genre, Jahr, Medium und Tracks\&.
+.br
+Bestehende Alben bearbeiten und Detailansicht nutzen\&.
+.br
+Duplikaterkennung beim Import und manuellen Anlegen\&.
+.br
+Erweiterte Suche und Filter nach Medium, Genre, Jahr\&.
+.br
+Sortierung nach verschiedenen Kriterien\&.
+.br
+Sammlung als PDF exportieren (sortiert nach Kuenstler)\&.
+.SH DISCOGS INTEGRATION
+OAuth 1\&.0a Authentifizierung in den Einstellungen einrichten\&.
+.br
+Alben in der Discogs-Datenbank suchen und mit Metadaten importieren\&.
+.br
+Komplette Discogs-Sammlung synchronisieren\&.
+.br
+Automatisches API-Rate-Limiting\&.
+.SH IMPORT/EXPORT
+JSON (empfohlen): Vollstaendige Daten mit Tracks und Metadaten\&.
+.br
+CSV: Tabellenkompatibel, mit optionaler Track-Unterstuetzung\&.
+.br
+XML: Strukturiertes Format fuer Datenaustausch\&.
+.br
+Ordner-Import: Automatische Erkennung aus Musikordnern (Format: "01 - Tracktitel\&.mp3")\&.
+.SH WANTLIST
+Eigener Bildschirm fuer gewuenschte Alben\&.
+.br
+Online/Offline-Synchronisation mit Discogs\&.
+.br
+Alben von der Wantlist in die Sammlung uebernehmen\&.
+.br
+Intelligente Konflikterkennung beim Synchronisieren\&.
+.br
+Wunschliste als PDF exportieren\&.
+.SH DATEIPFADE
+Konfiguration:   ~/\&.config/music_up/
+.br
+Sammlung:        Konfigurierbar in Einstellungen
+.br
+Wantlist:        Konfigurierbar in Einstellungen
+.br
+Logs:            Siehe Einstellungen > Logs senden
+.SH OPTIONEN
+-h, --help       Hilfe anzeigen und beenden
+.br
+-v, --version    Version anzeigen und beenden
+.SH AUTOR
+Michael Milke (Nobo)
+.br
+E-Mail: nobo_code@posteo\&.de
+.SH FEHLER MELDEN
+Fehler und Verbesserungsvorschlaege per E-Mail an:
+.br
+nobo_code@posteo\&.de
+.PP
+Quellcode: https://github\&.com/hiphopconnect/musicup

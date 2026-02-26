@@ -70,18 +70,30 @@ sed -i "s/versionName = .*/versionName = \"${NEW_VERSION}\"/" android/app/build.
 
 # 4. iOS and macOS already use $(FLUTTER_BUILD_NAME) and $(FLUTTER_BUILD_NUMBER) so they're automatically updated
 
+# 5. Update DEBIAN control file
+echo -e "  ${BLUE}→${NC} Updating package/DEBIAN/control"
+sed -i "s/^Version: .*/Version: ${NEW_VERSION}-${NEW_BUILD}/" package/DEBIAN/control
+
+# 6. Update Flutter assets version.json
+echo -e "  ${BLUE}→${NC} Updating version.json"
+cat > package/usr/local/bin/music-up/data/flutter_assets/version.json << VJSON
+{"app_name":"music_up","version":"${NEW_VERSION}","build_number":"${NEW_BUILD}","package_name":"music_up"}
+VJSON
+
 echo
-echo -e "${GREEN}✅ Version update completed!${NC}"
+echo -e "${GREEN}Version update completed!${NC}"
 echo
 echo -e "${YELLOW}Summary of changes:${NC}"
-echo -e "  • pubspec.yaml: ${NEW_VERSION}+${NEW_BUILD}"
-echo -e "  • README.md: v${NEW_VERSION}"
-echo -e "  • Android: versionCode ${NEW_VERSION_CODE}, versionName ${NEW_VERSION}"
-echo -e "  • iOS/macOS: Automatically use Flutter version variables"
+echo -e "  - pubspec.yaml: ${NEW_VERSION}+${NEW_BUILD}"
+echo -e "  - README.md: v${NEW_VERSION}"
+echo -e "  - Android: versionCode ${NEW_VERSION_CODE}, versionName ${NEW_VERSION}"
+echo -e "  - iOS/macOS: Automatically use Flutter version variables"
+echo -e "  - DEBIAN/control: ${NEW_VERSION}-${NEW_BUILD}"
+echo -e "  - version.json: ${NEW_VERSION} build ${NEW_BUILD}"
 echo
 echo -e "${BLUE}Next steps:${NC}"
 echo -e "  1. Test the application: ${YELLOW}flutter run${NC}"
 echo -e "  2. Commit changes: ${YELLOW}git add . && git commit -m \"Bump version to ${NEW_VERSION}\"${NC}"
-echo -e "  3. Create builds with: ${YELLOW}./create_apk.sh${NC} or ${YELLOW}./create_deb.sh${NC}"
+echo -e "  3. Create builds with: ${YELLOW}./scripts/create_apk.sh${NC} or ${YELLOW}./scripts/create_deb.sh${NC}"
 echo
 echo -e "${GREEN}Version update completed successfully!${NC}"

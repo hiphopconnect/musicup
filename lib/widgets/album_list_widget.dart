@@ -1,12 +1,11 @@
 // lib/widgets/album_list_widget.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/models/album_model.dart';
+import 'package:music_up/theme/app_theme.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/loading_widget.dart';
-import 'package:music_up/widgets/animated_widgets.dart';
-import 'package:music_up/widgets/responsive_widgets.dart';
-import 'package:music_up/services/accessibility_service.dart';
 
 class AlbumListWidget extends StatelessWidget {
   final List<Album> albums;
@@ -26,25 +25,27 @@ class AlbumListWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     if (isLoading) {
       return const SkeletonLoadingList(itemCount: 6);
     }
 
     if (albums.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.album, size: 64, color: Colors.grey),
-            SizedBox(height: DS.md),
+            const Icon(Icons.album, size: 64, color: Colors.grey),
+            const SizedBox(height: DS.md),
             Text(
-              'Keine Alben gefunden',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+              l10n.noAlbumsFound,
+              style: const TextStyle(fontSize: 18, color: Colors.grey),
             ),
-            SizedBox(height: DS.xs),
+            const SizedBox(height: DS.xs),
             Text(
-              'Fügen Sie Ihr erstes Album hinzu',
-              style: TextStyle(color: Colors.grey),
+              l10n.addFirstAlbum,
+              style: const TextStyle(color: Colors.grey),
             ),
           ],
         ),
@@ -53,8 +54,8 @@ class AlbumListWidget extends StatelessWidget {
 
     return ListView.builder(
       itemCount: albums.length,
-      itemExtent: 80.0, // Fixed height für bessere Performance
-      cacheExtent: 400.0, // Weniger Items im Cache
+      itemExtent: 80.0, // Fixed height for better performance
+      cacheExtent: 400.0, // Fewer items in cache
       itemBuilder: (context, index) {
         final album = albums[index];
         return AlbumListTile(
@@ -85,9 +86,10 @@ class AlbumListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: DS.sm, vertical: DS.xs),
-      color: const Color(0xFF2C2C2C), // Charcoal background
+      color: AppTheme.charcoal, // Charcoal background
       child: ListTile(
         onTap: onTap,
         leading: _buildSimpleIcon(),
@@ -110,12 +112,12 @@ class AlbumListTile extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.edit, color: Colors.white70, size: 20),
               onPressed: onEdit,
-              tooltip: 'Bearbeiten',
+              tooltip: l10n.edit,
             ),
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.white70, size: 20),
               onPressed: onDelete,
-              tooltip: 'Löschen',
+              tooltip: l10n.delete,
             ),
           ],
         ),
@@ -130,15 +132,15 @@ class AlbumListTile extends StatelessWidget {
     switch (album.medium) {
       case 'Vinyl':
         iconData = Icons.album;
-        iconColor = const Color(0xFF2E4F2E);
+        iconColor = AppTheme.darkGreen;
         break;
       case 'CD':
         iconData = Icons.album;
-        iconColor = const Color(0xFF556B2F);
+        iconColor = AppTheme.oliveGreen;
         break;
       case 'Cassette':
         iconData = Icons.library_music;
-        iconColor = const Color(0xFF2C2C2C);
+        iconColor = AppTheme.charcoal;
         break;
       case 'Digital':
         iconData = Icons.cloud;
@@ -152,4 +154,3 @@ class AlbumListTile extends StatelessWidget {
     return Icon(iconData, color: iconColor, size: 24);
   }
 }
-

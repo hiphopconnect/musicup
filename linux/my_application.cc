@@ -88,6 +88,34 @@ static void my_application_activate(GApplication* application) {
 // Implements GApplication::local_command_line.
 static gboolean my_application_local_command_line(GApplication* application, gchar*** arguments, int* exit_status) {
   MyApplication* self = MY_APPLICATION(application);
+
+  // Handle --help and --version before Flutter initialization
+  for (int i = 1; (*arguments)[i] != nullptr; i++) {
+    if (g_strcmp0((*arguments)[i], "--help") == 0 || g_strcmp0((*arguments)[i], "-h") == 0) {
+      g_print(
+        "Verwendung: musicup [OPTIONEN]\n\n"
+        "MusicUp - Musiksammlungs-Manager fuer Linux und Android\n\n"
+        "Optionen:\n"
+        "  -h, --help       Hilfe anzeigen und beenden\n"
+        "  -v, --version    Version anzeigen und beenden\n\n"
+        "Dateipfade:\n"
+        "  Konfiguration:   ~/.config/music_up/\n"
+        "  Sammlung:        Konfigurierbar in Einstellungen\n"
+        "  Logs:            Siehe Einstellungen > Logs senden\n\n"
+        "Vollstaendige Dokumentation: man musicup\n"
+        "Fehler melden: nobo_code@posteo.de\n"
+        "Repository: https://github.com/hiphopconnect/musicup\n"
+      );
+      *exit_status = 0;
+      return TRUE;
+    }
+    if (g_strcmp0((*arguments)[i], "--version") == 0 || g_strcmp0((*arguments)[i], "-v") == 0) {
+      g_print("MusicUp %s\n", VERSION_STRING);
+      *exit_status = 0;
+      return TRUE;
+    }
+  }
+
   // Strip out the first argument as it is the binary name.
   self->dart_entrypoint_arguments = g_strdupv(*arguments + 1);
 
