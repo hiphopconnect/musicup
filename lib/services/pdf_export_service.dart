@@ -52,6 +52,7 @@ class PdfExportService {
 
     pdf.addPage(
       pw.MultiPage(
+        maxPages: 200,
         pageFormat: PdfPageFormat.a4,
         header: (context) => _buildHeader(title, dateStr),
         footer: (context) => _buildFooter(albums.length, context),
