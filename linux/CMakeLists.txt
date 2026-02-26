@@ -54,7 +54,12 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
 
+# Extract version from pubspec.yaml for --version flag
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/../pubspec.yaml" _version_line REGEX "^version:")
+string(REGEX REPLACE "^version: ([0-9]+\\.[0-9]+\\.[0-9]+).*" "\\1" APP_VERSION "${_version_line}")
+
 add_definitions(-DAPPLICATION_ID="${APPLICATION_ID}")
+add_definitions(-DVERSION_STRING="${APP_VERSION}")
 
 # Define the application target. To change its name, change BINARY_NAME above,
 # not the value here, or `flutter run` will no longer work.

@@ -38,7 +38,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       chipTheme: base.chipTheme.copyWith(
-        selectedColor: base.colorScheme.primary.withOpacity(0.15),
+        selectedColor: base.colorScheme.primary.withValues(alpha: 0.15),
         checkmarkColor: base.colorScheme.primary,
         side: BorderSide(color: base.colorScheme.outlineVariant),
         shape: StadiumBorder(
@@ -92,7 +92,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       chipTheme: base.chipTheme.copyWith(
-        selectedColor: base.colorScheme.primary.withOpacity(0.25),
+        selectedColor: base.colorScheme.primary.withValues(alpha: 0.25),
         side: BorderSide(color: base.colorScheme.outline),
       ),
       snackBarTheme: SnackBarThemeData(

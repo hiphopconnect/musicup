@@ -11,10 +11,11 @@ class DiscogsOAuthService {
   // RUNTIME-KONFIGURIERBAR (statt statisch)
   final String consumerKey;
   final String consumerSecret;
+  final http.Client _httpClient;
 
   static const String _baseUrl = 'https://api.discogs.com';
   static const String _userAgent =
-      'MusicUp/2.1.0 +https://github.com/hiphopconnect/musicup';
+      'MusicUp/2.2.0 +https://github.com/hiphopconnect/musicup';
 
   String? _requestToken;
   String? _requestTokenSecret;
@@ -24,7 +25,8 @@ class DiscogsOAuthService {
   DiscogsOAuthService({
     required this.consumerKey,
     required this.consumerSecret,
-  });
+    http.Client? httpClient,
+  }) : _httpClient = httpClient ?? http.Client();
 
   // OAuth 1.0a Schritt 1: Request Token anfordern
   Future<String> getRequestToken() async {
@@ -51,7 +53,7 @@ class DiscogsOAuthService {
     final authHeader = _buildAuthorizationHeader(parameters);
 
 
-    final response = await http.post(
+    final response = await _httpClient.post(
       Uri.parse('$_baseUrl/oauth/request_token'),
       headers: {
         'Authorization': authHeader,
@@ -59,7 +61,6 @@ class DiscogsOAuthService {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
     );
-
 
     if (response.statusCode == 200) {
       final params = Uri.splitQueryString(response.body);
@@ -217,7 +218,7 @@ class DiscogsOAuthService {
     }
 
     const method = 'POST';
-    final url = '$_baseUrl/oauth/access_token';
+    const url = '$_baseUrl/oauth/access_token';
 
     final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final nonce = _generateNonce();
@@ -244,7 +245,7 @@ class DiscogsOAuthService {
     final authHeader = _buildAuthorizationHeader(parameters);
 
 
-    final response = await http.post(
+    final response = await _httpClient.post(
       Uri.parse(url),
       headers: {
         'Authorization': authHeader,

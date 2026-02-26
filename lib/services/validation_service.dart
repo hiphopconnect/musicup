@@ -1,26 +1,27 @@
 // lib/services/validation_service.dart
 
-/// Service für Form-Validierung ohne Design-Änderungen
+/// Service fuer Form-Validierung.
+/// Returns keys instead of localized strings - UI layer translates via validation_translations.dart
 class ValidationService {
-  
+
   /// Validiert Album-Name (PFLICHT)
   static String? validateAlbumName(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Album-Name ist erforderlich';
+      return 'albumNameRequired';
     }
     if (value.trim().length > 200) {
-      return 'Album-Name darf maximal 200 Zeichen lang sein';
+      return 'albumNameTooLong';
     }
     return null;
   }
 
-  /// Validiert Künstler-Name (PFLICHT)  
+  /// Validiert Kuenstler-Name (PFLICHT)
   static String? validateArtistName(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Künstler-Name ist erforderlich';
+      return 'artistRequired';
     }
     if (value.trim().length > 200) {
-      return 'Künstler-Name darf maximal 200 Zeichen lang sein';
+      return 'artistTooLong';
     }
     return null;
   }
@@ -28,10 +29,10 @@ class ValidationService {
   /// Validiert Genre
   static String? validateGenre(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return null; // Leer ist OK, wird zu "Unknown Genre"
+      return null;
     }
     if (value.trim().length > 100) {
-      return 'Genre darf maximal 100 Zeichen lang sein';
+      return 'genreTooLong';
     }
     return null;
   }
@@ -39,56 +40,51 @@ class ValidationService {
   /// Validiert Jahr (sehr flexibel)
   static String? validateYear(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return null; // Leer ist OK, wird zu "Unknown"
+      return null;
     }
-    
-    // Spezielle Werte erlauben
+
     final normalizedValue = value.trim().toLowerCase();
     if (['unknown', 'unbekannt', 'nan', 'n/a', '?', '-'].contains(normalizedValue)) {
       return null;
     }
-    
+
     final year = int.tryParse(value.trim());
     if (year == null) {
-      return 'Jahr muss eine Zahl sein oder "Unknown"';
+      return 'yearFormat';
     }
-    
+
     final currentYear = DateTime.now().year;
     if (year < 1800) {
-      return 'Jahr zu alt (vor 1800)';
+      return 'yearTooOld';
     }
     if (year > currentYear + 5) {
-      return 'Jahr zu weit in der Zukunft';
+      return 'yearTooFuture';
     }
-    
+
     return null;
   }
 
   /// Validiert Medium-Auswahl (OPTIONAL)
   static String? validateMedium(String? value) {
-    // Medium ist jetzt optional
     if (value == null || value.trim().isEmpty) {
-      return null; // OK, wird zu "Unknown"
+      return null;
     }
-    
-    final validMediums = ['CD', 'Vinyl', 'Kassette', 'Digital'];
+
+    final validMediums = ['CD', 'Vinyl', 'Cassette', 'Digital', 'Unknown'];
     if (!validMediums.contains(value)) {
-      return 'Ungültiges Medium ausgewählt';
+      return 'invalidMedium';
     }
-    
+
     return null;
   }
 
   /// Validiert Track-Name
   static String? validateTrackName(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Track-Name ist erforderlich';
-    }
-    if (value.trim().length < 1) {
-      return 'Track-Name darf nicht leer sein';
+      return 'trackNameRequired';
     }
     if (value.trim().length > 150) {
-      return 'Track-Name darf maximal 150 Zeichen lang sein';
+      return 'trackNameTooLong';
     }
     return null;
   }
@@ -96,35 +92,34 @@ class ValidationService {
   /// Validiert Track-Dauer (optional)
   static String? validateTrackDuration(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return null; // Duration ist optional
+      return null;
     }
-    
-    // Format: MM:SS oder M:SS
+
     final durationRegex = RegExp(r'^\d{1,2}:\d{2}$');
     if (!durationRegex.hasMatch(value.trim())) {
-      return 'Format: MM:SS (z.B. 3:45)';
+      return 'timeFormat';
     }
-    
+
     final parts = value.trim().split(':');
     final minutes = int.tryParse(parts[0]);
     final seconds = int.tryParse(parts[1]);
-    
+
     if (minutes == null || seconds == null) {
-      return 'Ungültiges Zeitformat';
+      return 'invalidTimeFormat';
     }
-    
+
     if (minutes < 0 || minutes > 99) {
-      return 'Minuten müssen zwischen 0-99 liegen';
+      return 'minutesRange';
     }
-    
+
     if (seconds < 0 || seconds > 59) {
-      return 'Sekunden müssen zwischen 0-59 liegen';
+      return 'secondsRange';
     }
-    
+
     return null;
   }
 
-  /// Prüft ob Formular-Eingaben gültig sind (Album & Künstler sind Pflicht)
+  /// Prueft ob Formular-Eingaben gueltig sind (Album & Kuenstler sind Pflicht)
   static bool isAlbumFormValid({
     required String albumName,
     required String artistName,
@@ -132,7 +127,6 @@ class ValidationService {
     required String year,
     required String? selectedMedium,
   }) {
-    // Album-Name und Künstler sind Pflicht, Rest ist optional
     return validateAlbumName(albumName) == null &&
            validateArtistName(artistName) == null &&
            validateGenre(genre) == null &&
@@ -140,7 +134,7 @@ class ValidationService {
            validateMedium(selectedMedium) == null;
   }
 
-  /// Zählt Validierungs-Fehler (Album & Künstler sind Pflicht)
+  /// Zaehlt Validierungs-Fehler (Album & Kuenstler sind Pflicht)
   static int countValidationErrors({
     required String albumName,
     required String artistName,
@@ -149,13 +143,13 @@ class ValidationService {
     required String? selectedMedium,
   }) {
     int errors = 0;
-    
+
     if (validateAlbumName(albumName) != null) errors++;
     if (validateArtistName(artistName) != null) errors++;
     if (validateGenre(genre) != null) errors++;
     if (validateYear(year) != null) errors++;
     if (validateMedium(selectedMedium) != null) errors++;
-    
+
     return errors;
   }
 
@@ -174,12 +168,12 @@ class ValidationService {
 
   static String getYearOrDefault(String? value) {
     if (value == null || value.trim().isEmpty) return 'Unknown';
-    
+
     final normalizedValue = value.trim().toLowerCase();
     if (['nan', 'n/a', '?', '-'].contains(normalizedValue)) {
       return 'Unknown';
     }
-    
+
     return value.trim();
   }
 
@@ -188,7 +182,7 @@ class ValidationService {
   }
 
   static bool getDigitalOrDefault(bool? value) {
-    return value ?? false; // Default: nicht digital
+    return value ?? false;
   }
 
   /// Bereinigt Eingabe-Text (trim + sanitize)

@@ -170,6 +170,12 @@ if [ ! -d "package/usr/local/bin/$PACKAGE_NAME" ]; then
     exit 1
 fi
 
+# Generate and install man page
+echo -e "${GREEN}Generating man page...${NC}"
+mkdir -p package/usr/share/man/man1
+dart run tool/generate_manpage.dart > package/usr/share/man/man1/musicup.1
+gzip -f package/usr/share/man/man1/musicup.1
+
 # Copy README.md into the documentation directory
 echo -e "${GREEN}Copying README.md into the documentation directory...${NC}"
 cp README.md package/usr/share/doc/$PACKAGE_NAME/

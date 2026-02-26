@@ -1,6 +1,8 @@
 // lib/widgets/album_form_widget.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
+import 'package:music_up/l10n/validation_translations.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/section_card.dart';
 import 'package:music_up/services/validation_service.dart';
@@ -56,23 +58,23 @@ class AlbumFormWidget extends StatefulWidget {
 
 class _AlbumFormWidgetState extends State<AlbumFormWidget> {
   final int currentYear = DateTime.now().year;
-  
+
   // Validation state
   String? _nameError;
   String? _artistError;
   String? _genreError;
-  
+
   @override
   void initState() {
     super.initState();
     if (widget.enableValidation) {
-      // Add listeners für real-time validation
+      // Add listeners for real-time validation
       widget.nameController.addListener(_validateName);
       widget.artistController.addListener(_validateArtist);
       widget.genreController.addListener(_validateGenre);
     }
   }
-  
+
   @override
   void dispose() {
     if (widget.enableValidation) {
@@ -82,21 +84,21 @@ class _AlbumFormWidgetState extends State<AlbumFormWidget> {
     }
     super.dispose();
   }
-  
+
   void _validateName() {
     if (!widget.enableValidation) return;
     setState(() {
       _nameError = ValidationService.validateAlbumName(widget.nameController.text);
     });
   }
-  
+
   void _validateArtist() {
     if (!widget.enableValidation) return;
     setState(() {
       _artistError = ValidationService.validateArtistName(widget.artistController.text);
     });
   }
-  
+
   void _validateGenre() {
     if (!widget.enableValidation) return;
     setState(() {
@@ -106,63 +108,76 @@ class _AlbumFormWidgetState extends State<AlbumFormWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         // Album Information Section
         SectionCard(
-          title: 'Album-Informationen',
+          title: l10n.albumInformation,
           child: Column(
             children: [
               Semantics(
                 label: AccessibilityService.createFormFieldLabel(
-                  'Album-Name', 
-                  true, 
+                  l10n.albumName,
+                  true,
                   widget.nameController.text
                 ),
                 textField: true,
                 child: TextField(
                   controller: widget.nameController,
+                  maxLength: 200,
                   decoration: InputDecoration(
-                    labelText: 'Album-Name *',
+                    labelText: l10n.albumNameRequired,
                     prefixIcon: const Icon(Icons.album),
                     border: const OutlineInputBorder(),
-                    errorText: widget.enableValidation ? _nameError : null,
+                    counterText: '',
+                    errorText: widget.enableValidation && _nameError != null
+                        ? translateValidation(l10n, _nameError!)
+                        : null,
                   ),
                 ),
               ),
               const SizedBox(height: DS.md),
               Semantics(
                 label: AccessibilityService.createFormFieldLabel(
-                  'Künstler', 
-                  true, 
+                  l10n.artist,
+                  true,
                   widget.artistController.text
                 ),
                 textField: true,
                 child: TextField(
                   controller: widget.artistController,
+                  maxLength: 200,
                   decoration: InputDecoration(
-                    labelText: 'Künstler *',
+                    labelText: l10n.artistRequired,
                     prefixIcon: const Icon(Icons.person),
                     border: const OutlineInputBorder(),
-                    errorText: widget.enableValidation ? _artistError : null,
+                    counterText: '',
+                    errorText: widget.enableValidation && _artistError != null
+                        ? translateValidation(l10n, _artistError!)
+                        : null,
                   ),
                 ),
               ),
               const SizedBox(height: DS.md),
               Semantics(
                 label: AccessibilityService.createFormFieldLabel(
-                  'Genre', 
-                  false, 
+                  'Genre',
+                  false,
                   widget.genreController.text
                 ),
                 textField: true,
                 child: TextField(
                   controller: widget.genreController,
+                  maxLength: 100,
                   decoration: InputDecoration(
-                    labelText: 'Genre (optional)',
+                    labelText: l10n.genreOptional,
                     prefixIcon: const Icon(Icons.music_note),
                     border: const OutlineInputBorder(),
-                    errorText: widget.enableValidation ? _genreError : null,
+                    counterText: '',
+                    errorText: widget.enableValidation && _genreError != null
+                        ? translateValidation(l10n, _genreError!)
+                        : null,
                   ),
                 ),
               ),
@@ -174,23 +189,23 @@ class _AlbumFormWidgetState extends State<AlbumFormWidget> {
 
         // Album Details Section
         SectionCard(
-          title: 'Album-Details',
+          title: l10n.albumDetails,
           child: Column(
             children: [
               // Year Dropdown
               DropdownButtonFormField<String>(
                 value: widget.selectedYear,
-                decoration: const InputDecoration(
-                  labelText: 'Jahr',
-                  prefixIcon: Icon(Icons.calendar_today),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.year,
+                  prefixIcon: const Icon(Icons.calendar_today),
+                  border: const OutlineInputBorder(),
                 ),
                 items: [
-                  const DropdownMenuItem<String>(
+                  DropdownMenuItem<String>(
                     value: null,
-                    child: Text('Jahr auswählen'),
+                    child: Text(l10n.selectYear),
                   ),
-                  ...List.generate(currentYear - 1950 + 1, (index) {
+                  ...List.generate(currentYear - 1900 + 1, (index) {
                     final year = (currentYear - index).toString();
                     return DropdownMenuItem<String>(
                       value: year,
@@ -205,29 +220,29 @@ class _AlbumFormWidgetState extends State<AlbumFormWidget> {
               // Medium Dropdown
               DropdownButtonFormField<String>(
                 value: widget.selectedMedium,
-                decoration: const InputDecoration(
-                  labelText: 'Medium',
-                  prefixIcon: Icon(Icons.storage),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.medium,
+                  prefixIcon: const Icon(Icons.storage),
+                  border: const OutlineInputBorder(),
                 ),
-                items: const [
+                items: [
                   DropdownMenuItem<String>(
                     value: null,
-                    child: Text('Medium auswählen'),
+                    child: Text(l10n.selectMedium),
                   ),
-                  DropdownMenuItem<String>(
+                  const DropdownMenuItem<String>(
                     value: 'Vinyl',
                     child: Text('Vinyl'),
                   ),
-                  DropdownMenuItem<String>(
+                  const DropdownMenuItem<String>(
                     value: 'CD',
                     child: Text('CD'),
                   ),
-                  DropdownMenuItem<String>(
+                  const DropdownMenuItem<String>(
                     value: 'Cassette',
                     child: Text('Cassette'),
                   ),
-                  DropdownMenuItem<String>(
+                  const DropdownMenuItem<String>(
                     value: 'Digital',
                     child: Text('Digital'),
                   ),
@@ -239,8 +254,8 @@ class _AlbumFormWidgetState extends State<AlbumFormWidget> {
               // Digital Switch
               Card(
                 child: SwitchListTile(
-                  title: const Text('Digital verfügbar'),
-                  subtitle: const Text('Ist dieses Album digital verfügbar?'),
+                  title: Text(l10n.digitalAvailable),
+                  subtitle: Text(l10n.digitalAvailableQuestion),
                   value: widget.isDigital ?? false,
                   onChanged: widget.onDigitalChanged,
                   secondary: const Icon(Icons.cloud),
@@ -255,16 +270,18 @@ class _AlbumFormWidgetState extends State<AlbumFormWidget> {
 }
 
 class AlbumFormValidator {
-  static String? validateAlbumName(String? value) {
+  static String? validateAlbumName(String? value, BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (value == null || value.trim().isEmpty) {
-      return 'Bitte geben Sie einen Album-Namen ein';
+      return l10n.pleaseEnterAlbumName;
     }
     return null;
   }
 
-  static String? validateArtist(String? value) {
+  static String? validateArtist(String? value, BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (value == null || value.trim().isEmpty) {
-      return 'Bitte geben Sie einen Künstler ein';
+      return l10n.pleaseEnterArtist;
     }
     return null;
   }

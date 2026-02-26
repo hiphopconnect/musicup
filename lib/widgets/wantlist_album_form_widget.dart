@@ -1,6 +1,7 @@
 // lib/widgets/wantlist_album_form_widget.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/section_card.dart';
 
@@ -37,24 +38,25 @@ class _WantlistAlbumFormWidgetState extends State<WantlistAlbumFormWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Form(
       key: widget.formKey,
       child: Column(
         children: [
           // Album-Informationen Sektion
           SectionCard(
-            title: "Album-Informationen",
+            title: l10n.albumInformation,
             child: Column(
               children: [
                 TextFormField(
                   controller: widget.albumNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Album-Name *',
-                    prefixIcon: Icon(Icons.album),
+                  decoration: InputDecoration(
+                    labelText: l10n.albumNameRequired,
+                    prefixIcon: const Icon(Icons.album),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Bitte Album-Name eingeben';
+                      return l10n.pleaseEnterAlbumNameShort;
                     }
                     return null;
                   },
@@ -62,13 +64,13 @@ class _WantlistAlbumFormWidgetState extends State<WantlistAlbumFormWidget> {
                 const SizedBox(height: DS.md),
                 TextFormField(
                   controller: widget.artistController,
-                  decoration: const InputDecoration(
-                    labelText: 'Künstler *',
-                    prefixIcon: Icon(Icons.person),
+                  decoration: InputDecoration(
+                    labelText: l10n.artistRequired,
+                    prefixIcon: const Icon(Icons.person),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Bitte Künstler-Name eingeben';
+                      return l10n.pleaseEnterArtistShort;
                     }
                     return null;
                   },
@@ -76,17 +78,17 @@ class _WantlistAlbumFormWidgetState extends State<WantlistAlbumFormWidget> {
                 const SizedBox(height: DS.md),
                 TextFormField(
                   controller: widget.genreController,
-                  decoration: const InputDecoration(
-                    labelText: 'Genre (optional)',
-                    prefixIcon: Icon(Icons.music_note),
+                  decoration: InputDecoration(
+                    labelText: l10n.genreOptional,
+                    prefixIcon: const Icon(Icons.music_note),
                   ),
                 ),
                 const SizedBox(height: DS.md),
                 TextFormField(
                   controller: widget.yearController,
-                  decoration: const InputDecoration(
-                    labelText: 'Jahr (optional)',
-                    prefixIcon: Icon(Icons.calendar_today),
+                  decoration: InputDecoration(
+                    labelText: l10n.yearOptional,
+                    prefixIcon: const Icon(Icons.calendar_today),
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) {
@@ -95,7 +97,7 @@ class _WantlistAlbumFormWidgetState extends State<WantlistAlbumFormWidget> {
                       if (year == null ||
                           year < 1900 ||
                           year > DateTime.now().year + 10) {
-                        return 'Bitte gültiges Jahr eingeben (1900-${DateTime.now().year + 10})';
+                        return l10n.pleaseEnterValidYear(DateTime.now().year + 10);
                       }
                     }
                     return null;
@@ -109,14 +111,14 @@ class _WantlistAlbumFormWidgetState extends State<WantlistAlbumFormWidget> {
 
           // Format-Einstellungen Sektion
           SectionCard(
-            title: "Format-Einstellungen",
+            title: l10n.formatSettings,
             child: Column(
               children: [
                 DropdownButtonFormField<String>(
                   value: widget.selectedMedium,
-                  decoration: const InputDecoration(
-                    labelText: 'Medium',
-                    prefixIcon: Icon(Icons.storage),
+                  decoration: InputDecoration(
+                    labelText: l10n.medium,
+                    prefixIcon: const Icon(Icons.storage),
                   ),
                   items: _mediumOptions.map((String medium) {
                     return DropdownMenuItem<String>(
@@ -133,8 +135,8 @@ class _WantlistAlbumFormWidgetState extends State<WantlistAlbumFormWidget> {
                 const SizedBox(height: DS.md),
                 Card(
                   child: SwitchListTile(
-                    title: const Text('Digital verfügbar'),
-                    subtitle: const Text('Ist dieses Album digital verfügbar?'),
+                    title: Text(l10n.digitalAvailable),
+                    subtitle: Text(l10n.digitalAvailableQuestion),
                     value: widget.digital,
                     onChanged: widget.onDigitalChanged,
                     secondary: const Icon(Icons.cloud),

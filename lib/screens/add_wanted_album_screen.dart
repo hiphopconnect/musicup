@@ -1,9 +1,10 @@
 // lib/screens/add_wanted_album_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/models/album_model.dart';
-import 'package:music_up/services/config_manager.dart';
-import 'package:music_up/services/json_service.dart';
+import 'package:music_up/services/logger_service.dart';
+import 'package:music_up/services/service_locator.dart';
 import 'package:music_up/services/wantlist_service.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/app_layout.dart';
@@ -11,14 +12,7 @@ import 'package:music_up/widgets/status_banner.dart';
 import 'package:music_up/widgets/wantlist_album_form_widget.dart';
 
 class AddWantedAlbumScreen extends StatefulWidget {
-  final JsonService jsonService;
-  final ConfigManager configManager;
-
-  const AddWantedAlbumScreen({
-    super.key,
-    required this.jsonService,
-    required this.configManager,
-  });
+  const AddWantedAlbumScreen({super.key});
 
   @override
   AddWantedAlbumScreenState createState() => AddWantedAlbumScreenState();
@@ -39,7 +33,7 @@ class AddWantedAlbumScreenState extends State<AddWantedAlbumScreen> {
   @override
   void initState() {
     super.initState();
-    _wantlistService = WantlistService(widget.jsonService);
+    _wantlistService = WantlistService(sl.jsonService);
   }
 
   @override
@@ -70,9 +64,11 @@ class AddWantedAlbumScreenState extends State<AddWantedAlbumScreen> {
 
       if (!mounted) return;
 
+      LoggerService.success('Wantlist add', album.name);
       _showSuccessMessage(album);
       Navigator.pop(context, true);
     } catch (e) {
+      LoggerService.error('Wantlist add', e, 'AddWantedAlbumScreen');
       if (!mounted) return;
       setState(() => _isSaving = false);
       _showErrorMessage(e.toString());
@@ -80,44 +76,48 @@ class AddWantedAlbumScreenState extends State<AddWantedAlbumScreen> {
   }
 
   void _showSuccessMessage(Album album) {
+    final l10n = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('"${album.name}" zur Wantlist hinzugefügt'),
+        content: Text(l10n.albumAddedToWantlist(album.name)),
         backgroundColor: Colors.green,
       ),
     );
   }
 
   void _showErrorMessage(String error) {
+    final l10n = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Fehler: $error'),
+        content: Text(l10n.errorGeneric(error)),
         backgroundColor: Colors.red,
       ),
     );
   }
 
   Widget _buildLoadingState() {
-    return const Center(
+    final l10n = AppLocalizations.of(context);
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(),
-          SizedBox(height: DS.md),
-          Text('Speichere zur Wantlist...'),
+          const CircularProgressIndicator(),
+          const SizedBox(height: DS.md),
+          Text(l10n.savingToWantlist),
         ],
       ),
     );
   }
 
   Widget _buildFormContent() {
+    final l10n = AppLocalizations.of(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(DS.md),
       child: Column(
         children: [
           // Info Banner
           StatusBanner(
-            message: 'Alben, die Sie in Zukunft erwerben möchten',
+            message: l10n.wantlistInfoBanner,
             backgroundColor: Colors.green[50]!,
             textColor: Colors.green[800]!,
             icon: Icons.favorite,
@@ -152,7 +152,7 @@ class AddWantedAlbumScreenState extends State<AddWantedAlbumScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.favorite),
-              label: Text(_isSaving ? 'Speichere...' : 'Zur Wantlist hinzufügen'),
+              label: Text(_isSaving ? l10n.saving : l10n.addToWantlistButton),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
@@ -168,8 +168,9 @@ class AddWantedAlbumScreenState extends State<AddWantedAlbumScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AppLayout(
-      title: 'Zur Wantlist hinzufügen',
+      title: l10n.addToWantlistTitle,
       appBarColor: Colors.green,
       actions: [
         if (!_isSaving)

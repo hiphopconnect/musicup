@@ -1,13 +1,14 @@
 // lib/screens/wantlist_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/screens/add_wanted_album_screen.dart';
 import 'package:music_up/screens/album_detail_screen.dart';
-import 'package:music_up/services/config_manager.dart';
-import 'package:music_up/services/discogs_service_unified.dart';
-import 'package:music_up/services/json_service.dart';
 import 'package:music_up/services/logger_service.dart';
+import 'package:music_up/services/service_locator.dart';
+import 'package:music_up/services/pdf_export_service.dart';
+import 'package:music_up/theme/app_theme.dart';
 import 'package:music_up/services/wantlist_sync_service.dart';
 import 'package:music_up/widgets/animated_widgets.dart';
 import 'package:music_up/widgets/app_layout.dart';
@@ -17,9 +18,7 @@ import 'package:music_up/widgets/wantlist_dialogs.dart';
 import 'package:music_up/widgets/wantlist_items_widget.dart';
 
 class WantlistScreen extends StatefulWidget {
-  final ConfigManager configManager;
-
-  const WantlistScreen({super.key, required this.configManager});
+  const WantlistScreen({super.key});
 
   @override
   WantlistScreenState createState() => WantlistScreenState();
@@ -27,15 +26,14 @@ class WantlistScreen extends StatefulWidget {
 
 class WantlistScreenState extends State<WantlistScreen> {
   final TextEditingController _searchController = TextEditingController();
-  
+
   List<Album> _wantedAlbums = [];
   List<Album> _filteredWantlistAlbums = [];
   bool _isLoading = true;
   bool _hasDiscogsAuth = false;
-  
-  late JsonService _jsonService;
+  bool _isSortAscending = true;
+
   late WantlistSyncService _syncService;
-  DiscogsServiceUnified? _discogsService;
 
   @override
   void initState() {
@@ -52,35 +50,81 @@ class WantlistScreenState extends State<WantlistScreen> {
   }
 
   void _initializeServices() {
-    _jsonService = JsonService(widget.configManager);
-    _discogsService = DiscogsServiceUnified(widget.configManager);
-    _syncService = WantlistSyncService(_discogsService, _jsonService);
-    _hasDiscogsAuth = _discogsService?.hasAuth ?? false;
+    _syncService = WantlistSyncService(sl.discogsService, sl.jsonService);
+    _hasDiscogsAuth = sl.discogsService.hasAuth;
   }
 
   void _filterWantlist() {
     final filtered = _syncService.filterWantlist(
-      _wantedAlbums, 
+      _wantedAlbums,
       _searchController.text,
     );
     setState(() {
       _filteredWantlistAlbums = filtered;
+      _applySorting();
     });
+  }
+
+  void _applySorting() {
+    _filteredWantlistAlbums.sort((a, b) {
+      final cmp = a.artist.toLowerCase().compareTo(b.artist.toLowerCase());
+      return _isSortAscending ? cmp : -cmp;
+    });
+  }
+
+  void _toggleSort() {
+    setState(() {
+      _isSortAscending = !_isSortAscending;
+      _applySorting();
+    });
+  }
+
+  Future<void> _exportWantlistPdf() async {
+    final l10n = AppLocalizations.of(context);
+
+    if (_filteredWantlistAlbums.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.wantlistEmpty)),
+      );
+      return;
+    }
+
+    try {
+      final path = await PdfExportService.exportAsPdf(
+        albums: _filteredWantlistAlbums,
+        title: 'MusicUp Wunschliste',
+        fileName: 'wunschliste.pdf',
+        dialogTitle: 'Wunschliste als PDF speichern',
+      );
+      if (!mounted) return;
+      if (path != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.pdfSaved(path))),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.pdfExportFailed('$e'))),
+      );
+    }
   }
 
   Future<void> _loadWantlist() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final albums = await _syncService.loadAndSyncWantlist();
-      
+
       if (!mounted) return;
       setState(() {
         _wantedAlbums = albums;
-        _filteredWantlistAlbums = albums;
+        _filteredWantlistAlbums = List<Album>.from(albums);
+        _applySorting();
         _isLoading = false;
       });
-      
+
       LoggerService.info('Wantlist loaded', '${albums.length} items');
     } catch (e) {
       LoggerService.error('Wantlist load failed', e);
@@ -108,29 +152,32 @@ class WantlistScreenState extends State<WantlistScreen> {
   }
 
   Future<void> _addToCollection(Album wantlistAlbum) async {
+    final l10n = AppLocalizations.of(context);
+
     final confirmed = await WantlistDialogs.showAddToCollectionDialog(
-      context, 
+      context,
       wantlistAlbum,
     );
-    
+
     if (confirmed != true) return;
 
+    if (!mounted) return;
     WantlistDialogs.showLoadingSnackbar(
-      context, 
-      'Wird zur Sammlung hinzugefügt...',
+      context,
+      l10n.addingToCollection,
     );
 
     try {
       await _syncService.addToCollection(
         wantlistAlbum: wantlistAlbum,
-        collectionJsonService: _jsonService,
+        collectionJsonService: sl.jsonService,
       );
 
       if (!mounted) return;
-      
+
       WantlistDialogs.showSuccessMessage(
         context,
-        '"${wantlistAlbum.name}" zur Sammlung hinzugefügt und aus Wantlist entfernt',
+        l10n.albumMovedToCollection(wantlistAlbum.name),
       );
 
       // Reload wantlist to reflect changes
@@ -142,6 +189,8 @@ class WantlistScreenState extends State<WantlistScreen> {
   }
 
   Future<void> _deleteFromWantlist(Album album) async {
+    final l10n = AppLocalizations.of(context);
+
     final confirmed = await WantlistDialogs.showDeleteConfirmationDialog(
       context,
       album,
@@ -155,10 +204,12 @@ class WantlistScreenState extends State<WantlistScreen> {
       if (!mounted) return;
 
       if (success) {
-        final discogsInfo = _hasDiscogsAuth ? ' und aus Discogs' : '';
+        final message = _hasDiscogsAuth
+            ? l10n.albumRemovedFromWantlistAndDiscogs(album.name)
+            : l10n.albumRemovedFromWantlist(album.name);
         WantlistDialogs.showSuccessMessage(
           context,
-          '"${album.name}" aus Wunschliste$discogsInfo entfernt',
+          message,
           backgroundColor: Colors.orange,
         );
 
@@ -167,7 +218,7 @@ class WantlistScreenState extends State<WantlistScreen> {
       } else {
         WantlistDialogs.showErrorMessage(
           context,
-          'Album konnte nicht entfernt werden',
+          l10n.albumCouldNotBeRemoved,
         );
       }
     } catch (e) {
@@ -180,10 +231,7 @@ class WantlistScreenState extends State<WantlistScreen> {
     final result = await Navigator.push<bool>(
       context,
       SmoothPageRoute<bool>(
-        page: AddWantedAlbumScreen(
-          jsonService: _jsonService,
-          configManager: widget.configManager,
-        ),
+        page: const AddWantedAlbumScreen(),
         routeName: '/add-wanted-album',
       ),
     );
@@ -195,19 +243,31 @@ class WantlistScreenState extends State<WantlistScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return AppLayout(
-      title: 'Wunschliste (${_filteredWantlistAlbums.length})',
-      appBarColor: const Color(0xFF556B2F), // Olive green
+      title: l10n.wantlistTitle(_filteredWantlistAlbums.length),
+      appBarColor: AppTheme.oliveGreen, // Olive green
       actions: [
+        IconButton(
+          onPressed: _exportWantlistPdf,
+          icon: const Icon(Icons.picture_as_pdf),
+          tooltip: l10n.exportAsPdf,
+        ),
+        IconButton(
+          onPressed: _toggleSort,
+          icon: const Icon(Icons.sort_by_alpha),
+          tooltip: _isSortAscending ? l10n.sortAZ : l10n.sortZA,
+        ),
         IconButton(
           onPressed: _addWantedAlbum,
           icon: const Icon(Icons.add),
-          tooltip: 'Album zur Wantlist hinzufügen',
+          tooltip: l10n.addToWantlistTooltip,
         ),
         IconButton(
           onPressed: _refreshWantlist,
           icon: const Icon(Icons.refresh),
-          tooltip: 'Wunschliste aktualisieren',
+          tooltip: l10n.refreshWantlist,
         ),
       ],
       body: Column(
@@ -217,10 +277,10 @@ class WantlistScreenState extends State<WantlistScreen> {
 
           // Search Section
           SectionCard(
-            title: 'Suche',
+            title: l10n.search,
             child: SearchBarWidget(
               controller: _searchController,
-              hintText: 'Wunschliste durchsuchen...',
+              hintText: l10n.searchWantlist,
               enabled: true,
             ),
           ),

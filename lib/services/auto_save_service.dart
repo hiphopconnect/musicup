@@ -117,14 +117,6 @@ class AutoSaveService {
     }
   }
   
-  /// Fügt Timestamp zu Form-Daten hinzu
-  Map<String, dynamic> _addTimestamp(Map<String, dynamic> data) {
-    return {
-      ...data,
-      '_timestamp': DateTime.now().millisecondsSinceEpoch,
-    };
-  }
-  
   void dispose() {
     _saveTimer?.cancel();
   }

@@ -1,564 +1,309 @@
 # MusicUp - Development Guide
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
 - **Flutter SDK**: 3.10.0+
 - **Dart SDK**: 3.0.0+
-- **Platform-specific tools**:
+- **Platform-spezifisch**:
   - Android: Android Studio + Android SDK
-  - iOS: Xcode (macOS only)
-  - Windows: Visual Studio 2022 with C++ tools
+  - iOS: Xcode (nur macOS)
+  - Windows: Visual Studio 2022 mit C++ Tools
   - macOS: Xcode Command Line Tools
-  - Linux: Standard development tools
+  - Linux: Standard-Entwicklungstools (`clang`, `cmake`, `ninja-build`, `libgtk-3-dev`)
 
-### Initial Setup
+### Setup
 
 ```bash
-# Clone the repository
 git clone https://github.com/hiphopconnect/musicup.git
 cd musicup
 
-# Install dependencies
 flutter pub get
 
-# Generate code (Riverpod providers, etc.)
-dart run build_runner build
-
-# Enable desktop platforms
+flutter config --enable-linux-desktop
 flutter config --enable-windows-desktop
 flutter config --enable-macos-desktop
-flutter config --enable-linux-desktop
 
-# Verify setup
 flutter doctor -v
 ```
 
-## 🏗️ Project Structure
+Keine Code-Generierung noetig -- das Projekt verwendet kein `build_runner`.
 
-### Core Architecture
+## Project Structure
 
 ```
 lib/
-├── core/                    # Clean architecture core
-│   ├── error/
-│   │   └── error_handler.dart         # Centralized error handling
-│   ├── platform/
-│   │   └── platform_service.dart      # Platform-specific services
-│   ├── providers/
-│   │   └── theme_provider.dart        # Riverpod providers
-│   ├── repositories/
-│   │   └── album_repository.dart      # Repository interfaces
-│   ├── responsive/
-│   │   └── responsive_layout.dart     # Responsive design system
-│   └── services/
-│       └── unified_album_service.dart # Consolidated business logic
+├── main.dart               # Entry Point, Service-Wiring
 ├── models/
-│   └── album_model.dart               # Data models
+│   └── album_model.dart    # Album, Track, DiscogsSearchResult
 ├── screens/
-│   ├── main_screen.dart               # Legacy main screen
-│   ├── responsive_main_screen.dart    # Modern responsive screen
-│   ├── add_album_screen.dart
-│   ├── edit_album_screen.dart
-│   ├── settings_screen.dart
-│   └── wantlist_screen.dart
-├── services/                          # Legacy services (being phased out)
+│   ├── main_screen.dart           # Hauptansicht mit Albumliste
+│   ├── add_album_screen.dart      # Album hinzufuegen
+│   ├── edit_album_screen.dart     # Album bearbeiten
+│   ├── album_detail_screen.dart   # Album-Detailansicht
+│   ├── discogs_search_screen.dart # Discogs-Suche
+│   ├── wantlist_screen.dart       # Wantlist-Verwaltung
+│   ├── add_wanted_album_screen.dart # Wantlist-Eintrag erstellen
+│   └── settings_screen.dart       # Einstellungen
+├── services/
+│   ├── config_manager.dart        # SharedPreferences Wrapper
+│   ├── json_service.dart          # File I/O (albums.json, wantlist.json)
+│   ├── album_filter_service.dart  # Filter- und Sortierlogik
+│   ├── album_edit_service.dart    # Bearbeitungslogik
+│   ├── validation_service.dart    # Formularvalidierung
+│   ├── auto_save_service.dart     # Entwurfsspeicherung
+│   ├── discogs_service_unified.dart  # Discogs API Client
+│   ├── discogs_oauth_service.dart    # OAuth-Authentifizierung
+│   ├── discogs_album_service.dart    # Discogs-Album-Konvertierung
+│   ├── wantlist_service.dart         # Wantlist-Operationen
+│   ├── wantlist_sync_service.dart    # Wantlist-Discogs-Sync
+│   ├── import_export_service.dart    # CSV/XML/JSON Import/Export
+│   ├── folder_import_service.dart    # Ordner-Import
+│   ├── pdf_export_service.dart       # PDF-Export (Sammlung + Wantlist)
+│   ├── logger_service.dart           # Logging
+│   ├── toast_service.dart            # Benutzerbenachrichtigungen
+│   └── accessibility_service.dart    # Barrierefreiheit
 ├── theme/
-│   ├── app_theme.dart                 # App theming
-│   └── design_system.dart             # Design tokens
-├── widgets/                           # Reusable components
-└── main.dart                          # App entry point
+│   ├── app_theme.dart         # Material Theme Definitionen
+│   └── design_system.dart     # Design Tokens (Spacing, Farben)
+└── widgets/                   # 22 wiederverwendbare UI-Komponenten
+    ├── app_layout.dart        # App-Shell mit AppBar
+    ├── album_list_widget.dart
+    ├── album_form_widget.dart
+    ├── album_filters_widget.dart
+    ├── track_management_widget.dart
+    ├── search_bar_widget.dart
+    └── ...
 ```
 
-## 🔄 State Management with Riverpod
+## State Management
 
-### Creating Providers
+Das Projekt verwendet **StatefulWidget + setState**. Kein Riverpod, kein Provider-Package, kein Bloc.
 
-```dart
-// 1. Add riverpod_annotation dependency
-// 2. Create provider file
-@riverpod
-class DataNotifier extends _$DataNotifier {
-  @override
-  List<Data> build() => [];
-  
-  void addData(Data data) {
-    state = [...state, data];
-  }
-}
-
-// 3. Generate code
-// dart run build_runner build
-```
-
-### Using Providers in Widgets
+### Pattern
 
 ```dart
-class MyWidget extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final data = ref.watch(dataNotifierProvider);
-    
-    return Column(
-      children: [
-        Text('Count: ${data.length}'),
-        ElevatedButton(
-          onPressed: () => ref.read(dataNotifierProvider.notifier).addData(newData),
-          child: Text('Add Data'),
-        ),
-      ],
-    );
+class _MyScreenState extends State<MyScreen> {
+  List<Album> _albums = [];
+  bool _isLoading = true;
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    final data = await widget.jsonService.loadAlbums();
+    setState(() {
+      _albums = data;
+      _isLoading = false;
+    });
   }
 }
 ```
 
-## 📱 Responsive Design
+### Service Injection
 
-### Adding Responsive Layouts
-
-```dart
-// Use ResponsiveLayout widget
-ResponsiveLayout(
-  mobile: MobileWidget(),
-  tablet: TabletWidget(),
-  desktop: DesktopWidget(),
-)
-
-// Use ResponsiveValue for dynamic values
-final padding = ResponsiveValue<double>(
-  mobile: 16.0,
-  tablet: 24.0,
-  desktop: 32.0,
-).getValue(context);
-```
-
-### Platform-Specific Adaptations
+Services werden per Constructor an Screens uebergeben:
 
 ```dart
-// Get platform-appropriate styling
-final padding = PlatformAdaptive.getPlatformPadding(context);
-final borderRadius = PlatformAdaptive.getPlatformBorderRadius();
-final elevation = PlatformAdaptive.getPlatformElevation();
-
-// Platform detection
-if (ResponsiveLayout.isDesktop) {
-  // Desktop-specific code
-} else {
-  // Mobile-specific code
-}
-```
-
-## ⚠️ Error Handling
-
-### Using Centralized Error Handler
-
-```dart
-try {
-  await riskyOperation();
-} catch (error, stackTrace) {
-  // Centralized error handling
-  AppErrorHandler.handle(
-    error,
-    stackTrace,
-    context: 'MyWidget.riskyOperation',
-    level: ErrorLevel.error,
-  );
-  
-  // Or use specific handlers
-  throw AppErrorHandler.handleNetworkError(error, context: 'API Call');
-}
-```
-
-### Creating Custom Exceptions
-
-```dart
-throw AppException.validation(
-  message: 'Invalid input data',
-  context: 'FormValidation',
+Navigator.push(context,
+  MaterialPageRoute(builder: (_) => EditAlbumScreen(
+    album: album,
+    jsonService: widget.jsonService,
+  )),
 );
 ```
 
-## 🧪 Testing
+## Error Handling
 
-### Running Tests
+Fehler werden direkt in den Screens per try/catch behandelt und via `SnackBar` dem Benutzer angezeigt:
 
-```bash
-# All tests
-flutter test
-
-# Specific test file
-flutter test test/core/services/unified_album_service_test.dart
-
-# With coverage
-flutter test --coverage
-genhtml coverage/lcov.info -o coverage/html
+```dart
+try {
+  await widget.jsonService.saveAlbums(albums);
+} catch (e) {
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('Fehler beim Speichern: $e')),
+  );
+}
 ```
 
-### Writing Tests
+Logging ueber `LoggerService`:
 
-#### Unit Tests
+```dart
+LoggerService.info('Albums loaded: ${albums.length} albums');
+LoggerService.error('Failed to load albums', error);
+```
+
+## Testing
+
+### Tests ausfuehren
+
+```bash
+flutter test                                      # Alle Tests
+flutter test test/json_service_test.dart          # Einzelner Test
+flutter test --coverage                           # Mit Coverage-Report
+```
+
+### Test schreiben
+
+#### Unit Test (Service)
 
 ```dart
 void main() {
-  group('UnifiedAlbumService', () {
-    late UnifiedAlbumService service;
-    late MockJsonService mockJsonService;
-    
+  group('AlbumFilterService', () {
+    late AlbumFilterService service;
+
     setUp(() {
-      mockJsonService = MockJsonService();
-      service = UnifiedAlbumService(jsonService: mockJsonService);
+      service = AlbumFilterService();
     });
-    
-    test('should return albums', () async {
-      // Arrange
-      final expectedAlbums = [Album(id: '1', title: 'Test')];
-      when(mockJsonService.loadAlbums()).thenAnswer((_) async => expectedAlbums);
-      
-      // Act
-      final result = await service.getAlbums();
-      
-      // Assert
-      expect(result, equals(expectedAlbums));
+
+    test('filters by medium', () {
+      final albums = [
+        Album(medium: 'Vinyl', ...),
+        Album(medium: 'CD', ...),
+      ];
+      final result = service.filterAlbums(
+        albums: albums,
+        mediumFilters: {'Vinyl': true, 'CD': false},
+      );
+      expect(result.length, 1);
+      expect(result.first.medium, 'Vinyl');
     });
   });
 }
 ```
 
-#### Widget Tests
+#### Widget Test (Screen)
 
 ```dart
 void main() {
-  testWidgets('ResponsiveLayout displays correct widget for screen size', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: MediaQuery(
-          data: MediaQueryData(size: Size(400, 800)),
-          child: ResponsiveLayout(
-            mobile: Text('Mobile'),
-            tablet: Text('Tablet'),
-          ),
-        ),
-      ),
-    );
-    
-    expect(find.text('Mobile'), findsOneWidget);
-    expect(find.text('Tablet'), findsNothing);
+  testWidgets('MainScreen displays album list', (tester) async {
+    final mockJsonService = MockJsonService();
+    when(mockJsonService.loadAlbums()).thenAnswer((_) async => testAlbums);
+
+    await tester.pumpWidget(MaterialApp(
+      home: MainScreen(jsonService: mockJsonService),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Test Album'), findsOneWidget);
   });
 }
 ```
 
-## 🏗️ Building & Deployment
+### Vorhandene Tests
 
-### Development Builds
+- **Model Tests**: `album_model_test.dart`
+- **Service Tests**: `json_service_test.dart`, `album_filter_service_test.dart`, `config_manager_test.dart`, `validation_service_test.dart`, `auto_save_service_test.dart`, `discogs_service_test.dart`, `import_export_service_test.dart`, `logger_service_test.dart`, `wantlist_sync_service_test.dart`
+- **Widget/Screen Tests**: `main_screen_test.dart`, `add_album_screen_test.dart`, `edit_album_screen_test.dart`, `album_form_widget_test.dart`, `album_list_widget_test.dart`
+- **Integration Tests**: `integration_test.dart`
+
+## Building
+
+### Development
 
 ```bash
-# Debug builds for development
-flutter run                    # Default platform
-flutter run -d windows         # Windows
-flutter run -d macos          # macOS
-flutter run -d linux          # Linux
-flutter run -d android        # Android
-flutter run -d ios            # iOS
+flutter run                # Standard-Plattform
+flutter run -d linux       # Linux
+flutter run -d android     # Android
 ```
 
 ### Release Builds
 
 ```bash
-# Single platform
-flutter build apk --release               # Android APK
-flutter build appbundle --release         # Android App Bundle
-flutter build ios --release               # iOS
-flutter build windows --release           # Windows
-flutter build macos --release             # macOS
-flutter build linux --release             # Linux
-
-# All platforms
-./build_all_platforms.sh
+flutter build apk --release          # Android APK
+flutter build appbundle --release    # Android App Bundle (Play Store)
+flutter build linux --release        # Linux
+flutter build windows --release      # Windows
+flutter build macos --release        # macOS
+flutter build ios --release          # iOS
 ```
 
-### Build Outputs
+### Build-Skripte
 
-```
-releases/v{VERSION}/
-├── musicup-v{VERSION}-android-arm64.apk
-├── musicup-v{VERSION}-android-arm.apk
-├── musicup-v{VERSION}-android-x64.apk
-├── musicup-v{VERSION}-playstore.aab
-├── windows/                    # Windows executable + DLLs
-├── macos/MusicUp.app          # macOS app bundle
-├── linux/                     # Linux executable + resources
-├── musicup-v{VERSION}-linux.tar.gz
-├── music-up_*.deb             # Debian package
-└── SHA256SUMS                 # Checksums
+```bash
+./create_apk.sh            # Android APK erstellen
+./create_deb.sh            # Debian-Paket erstellen
+./build_all_platforms.sh   # Alle Plattformen bauen
 ```
 
-## 🔧 Code Quality
+## Versionierung
+
+### Version aktualisieren
+
+```bash
+./update_version.sh
+```
+
+Aktualisiert automatisch:
+- `pubspec.yaml` (Version + Build-Nummer)
+- `README.md` (Version-Badge)
+- `android/app/build.gradle` (versionCode + versionName)
+- `package/DEBIAN/control` (Debian-Version)
+- `package/.../version.json` (Flutter-Assets)
+
+### Automatische Build-Nummer
+
+Der Pre-commit Hook in `.git/hooks/pre-commit` erhoeht die Build-Nummer in `pubspec.yaml` bei jedem Commit automatisch um 1.
+
+## Code Quality
 
 ### Linting & Formatting
 
 ```bash
-# Format code
 dart format lib/ test/
-
-# Analyze code
 flutter analyze
-
-# Fix common issues
 dart fix --apply
 ```
 
-### Pre-commit Hooks
+### Dependencies
 
 ```bash
-# Install pre-commit hooks (if using)
-git hooks install
-
-# Manual quality check
-dart format --set-exit-if-changed lib/ test/
-flutter analyze --fatal-infos
-flutter test
+flutter pub get              # Dependencies installieren
+flutter pub upgrade          # Dependencies aktualisieren
+flutter pub outdated         # Veraltete Packages pruefen
 ```
 
-### Code Generation
-
-```bash
-# Generate Riverpod providers, JSON serialization, etc.
-dart run build_runner build
-
-# Watch for changes during development
-dart run build_runner watch
-
-# Clean and rebuild
-dart run build_runner clean
-dart run build_runner build --delete-conflicting-outputs
-```
-
-## 🐛 Debugging
-
-### Debug Mode
-
-```bash
-# Run with debugging
-flutter run --debug
-
-# Enable verbose logging
-flutter run --verbose
-
-# Profile mode for performance testing
-flutter run --profile
-```
-
-### Platform-Specific Debugging
-
-#### Android
-
-```bash
-# View logs
-flutter logs
-adb logcat
-
-# Install debug APK
-flutter install --debug
-```
-
-#### iOS (macOS only)
-
-```bash
-# Open iOS Simulator
-open -a Simulator
-
-# View device logs
-flutter logs
-xcrun simctl spawn booted log stream
-```
-
-#### Desktop
-
-```bash
-# Run with console output
-flutter run -d windows --verbose
-flutter run -d macos --verbose
-flutter run -d linux --verbose
-```
-
-## 📦 Dependencies
-
-### Adding Dependencies
-
-```bash
-# Add regular dependency
-flutter pub add package_name
-
-# Add dev dependency
-flutter pub add --dev package_name
-
-# Update dependencies
-flutter pub upgrade
-
-# Check for outdated packages
-flutter pub outdated
-```
-
-### Key Dependencies
+### Aktuelle Dependencies (pubspec.yaml)
 
 ```yaml
 dependencies:
-  flutter_riverpod: ^2.4.9      # State management
-  riverpod_annotation: ^2.3.3   # Code generation
-  window_manager: ^0.3.7        # Desktop window management
-  system_tray: ^2.0.3           # System tray support
-  logger: ^2.0.1                # Logging
-  
+  path_provider: ^2.1.1      # Dateisystem-Pfade
+  file_picker: ^8.1.2        # Dateiauswahl-Dialog
+  shared_preferences: ^2.2.2 # Key-Value Speicher
+  uuid: ^4.5.0               # Unique IDs
+  package_info_plus: ^8.1.1  # App-Versionsinformationen
+  logger: ^1.4.0             # Logging
+  url_launcher: ^6.3.0       # URLs oeffnen
+  http: ^1.1.0               # HTTP Client (Discogs API)
+  csv: ^6.0.0                # CSV Import/Export
+  xml: ^6.1.0                # XML Import/Export
+  crypto: ^3.0.3             # OAuth-Signaturen
+  share_plus: ^10.0.2        # Teilen-Funktion
+
 dev_dependencies:
-  riverpod_generator: ^2.3.9    # Riverpod code generation
-  build_runner: ^2.4.13        # Code generation runner
-  mockito: ^5.4.4               # Mocking for tests
+  mockito: ^5.4.4            # Mocking fuer Tests
+  build_runner: ^2.4.13      # Code-Generierung (Mockito)
+  flutter_lints: ^5.0.0      # Lint-Regeln
+  flutter_launcher_icons: ^0.13.1 # App-Icon-Generierung
 ```
 
-## 🔄 Migration Guide
-
-### From Legacy to Modern Architecture
-
-1. **Replace setState with Riverpod**:
-   ```dart
-   // Old
-   setState(() { _data = newData; });
-   
-   // New
-   ref.read(dataNotifierProvider.notifier).updateData(newData);
-   ```
-
-2. **Replace direct service calls with repositories**:
-   ```dart
-   // Old
-   final albums = await jsonService.loadAlbums();
-   
-   // New
-   final albums = await ref.read(albumRepositoryProvider).getAlbums();
-   ```
-
-3. **Replace manual error handling**:
-   ```dart
-   // Old
-   try { ... } catch (e) { print('Error: $e'); }
-   
-   // New
-   try { ... } catch (e, s) { AppErrorHandler.handle(e, s, context: 'Operation'); }
-   ```
-
-## 🚀 Performance Optimization
-
-### General Guidelines
-
-- Use `const` constructors where possible
-- Implement proper `dispose()` methods
-- Use `AutomaticKeepAliveClientMixin` for expensive widgets
-- Optimize list rendering with `ListView.builder`
-- Cache expensive computations
-
-### Platform-Specific Optimizations
-
-#### Desktop
-
-```dart
-// Window management
-await windowManager.setSize(Size(1200, 800));
-await windowManager.setMinimumSize(Size(800, 600));
-
-// System tray integration
-await systemTray.initSystemTray(iconPath: 'assets/icon.png');
-```
-
-#### Mobile
-
-```dart
-// Memory optimization
-SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-
-// Battery optimization
-WidgetsBinding.instance.addObserver(lifecycleObserver);
-```
-
-## 📝 Contributing
-
-### Development Workflow
-
-1. **Feature Branch**: Create feature/fix branches from `main`
-2. **Code**: Implement changes following architecture guidelines
-3. **Test**: Write/update tests, ensure coverage
-4. **Quality**: Run linting, formatting, analysis
-5. **PR**: Create pull request with description
-6. **Review**: Address feedback, update as needed
-7. **Merge**: Squash and merge when approved
-
-### Commit Messages
+## Debugging
 
 ```bash
-feat: add responsive desktop layout
-fix: resolve memory leak in album loading
-docs: update architecture documentation
-test: add unit tests for album service
-refactor: consolidate album services
-style: format code according to dart conventions
+flutter run --debug          # Debug-Modus
+flutter run --verbose        # Ausfuehrliches Logging
+flutter run --profile        # Performance-Profiling
+flutter logs                 # Logs anzeigen
 ```
 
-## 🔧 Troubleshooting
+## Commit-Konventionen
 
-### Common Issues
-
-#### Build Failures
-
-```bash
-# Clean and rebuild
-flutter clean
-flutter pub get
-dart run build_runner clean
-dart run build_runner build
-
-# Platform-specific issues
-flutter doctor -v
 ```
-
-#### State Management Issues
-
-```bash
-# Regenerate providers
-dart run build_runner build --delete-conflicting-outputs
-
-# Check provider dependencies
-flutter packages pub deps
+feat: neue Funktion hinzufuegen
+fix: Bug beheben
+docs: Dokumentation aktualisieren
+test: Tests hinzufuegen/aendern
+refactor: Code umstrukturieren
+style: Formatierung aendern
 ```
-
-#### Platform Support
-
-```bash
-# Enable desktop support
-flutter config --enable-windows-desktop
-flutter config --enable-macos-desktop
-flutter config --enable-linux-desktop
-
-# Verify platform support
-flutter doctor -v
-```
-
-## 📚 Resources
-
-### Documentation
-
-- [Flutter Documentation](https://flutter.dev/docs)
-- [Riverpod Documentation](https://riverpod.dev)
-- [Clean Architecture Guide](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
-
-### Tools
-
-- **IDE**: VS Code with Flutter/Dart extensions
-- **Debugging**: Flutter Inspector, Dart DevTools
-- **Testing**: Flutter Test, Mockito
-- **CI/CD**: GitHub Actions (planned)
-
-### Community
-
-- [Flutter Community](https://flutter.dev/community)
-- [Riverpod Discord](https://discord.gg/Bbumvej)
-- Project Issues: [GitHub Issues](https://github.com/hiphopconnect/musicup/issues)

@@ -2,7 +2,7 @@
 
 ![Flutter](https://img.shields.io/badge/Flutter-v3.32.7-blue.svg)
 ![Dart](https://img.shields.io/badge/Dart-v3.8.1-blue.svg)
-![Version](https://img.shields.io/badge/Version-v2.2.0-blue.svg)
+![Version](https://img.shields.io/badge/Version-v3.0.0-blue.svg)
 ![License](https://img.shields.io/badge/License-Proprietary-red.svg)
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Android-green.svg)
 ![Discogs](https://img.shields.io/badge/Discogs-API%20Integration-orange.svg)
@@ -56,6 +56,13 @@ a seamless experience for importing, exporting, and maintaining your album data.
 - **Online/Offline Sync:** Synchronize your wantlist with Discogs while maintaining offline functionality
 - **Add to Collection:** Seamlessly move albums from wantlist to your main collection
 - **Smart Merging:** Intelligent conflict resolution when syncing online and offline wantlist data
+
+### PDF Export
+
+- **Collection Export:** Export your current album collection as a formatted PDF document
+- **Wantlist Export:** Export your wantlist as a PDF for offline reference
+- **Sorted Output:** Albums are automatically sorted by artist (A-Z) with artist, album name, and medium columns
+- **Custom Save Location:** Choose where to save the generated PDF file
 
 ### Search & Organization
 
@@ -116,8 +123,8 @@ a seamless experience for importing, exporting, and maintaining your album data.
 1. **Clone the Repository:**
 
    ```bash
-   git clone https://github.com/hiphopconnect/music_up.git
-   cd music_up
+   git clone https://github.com/hiphopconnect/musicup.git
+   cd musicup
    ```
 
 2. **Install Dependencies:**
@@ -172,7 +179,7 @@ Once installed, **MusicUp** can be launched from your system's application menu.
 
 **MusicUp** supports importing and exporting your collection in multiple standardized formats:
 
-### 📄 **JSON Format** (Recommended)
+### JSON Format (Recommended)
 
 The native format with full feature support including tracks and metadata:
 
@@ -200,7 +207,7 @@ The native format with full feature support including tracks and metadata:
 ]
 ```
 
-### 📊 **CSV Format**
+### CSV Format
 
 Spreadsheet-compatible format supporting both basic and detailed album information:
 
@@ -232,7 +239,7 @@ name,artist,genre,year,medium,digital,tracks
     - Format: `"01 - Track Title|02 - Next Track|03 - Final Track"`
     - Each track: `TrackNumber - TrackTitle`
 
-### 🗂️ **XML Format**
+### XML Format
 
 Structured format for data exchange:
 
@@ -257,15 +264,15 @@ Structured format for data exchange:
 </albums>
 ```
 
-### 📁 **Folder Import Requirements**
+### Folder Import Requirements
 
 For automatic folder-based import:
 
 ```
-📁 Album Folder Name/
-  🎵 01 - Track Title.mp3
-  🎵 02 - Another Track.mp3  
-  🎵 03 - Third Track.mp3
+Album Folder Name/
+  01 - Track Title.mp3
+  02 - Another Track.mp3
+  03 - Third Track.mp3
 ```
 
 **Requirements:**
@@ -276,7 +283,7 @@ For automatic folder-based import:
 - **Separator:** Space-dash-space (` - `)
 - **File Extension:** .mp3 files only
 
-### 💡 **Import Tips**
+### Import Tips
 
 - **JSON** provides complete data preservation with best track information support
 - **CSV** supports both basic album info and track listings (using pipe `|` separator)
@@ -375,7 +382,7 @@ This project is proprietary software owned exclusively by the author.
 
 ### Copyright Notice
 
-© 2024 - All rights reserved. This software and its source code are the exclusive property of the author.
+© 2024-2026 - All rights reserved. This software and its source code are the exclusive property of the author.
 
 ### Usage Terms
 

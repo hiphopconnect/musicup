@@ -1,7 +1,9 @@
 // lib/widgets/wantlist_dialogs.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/models/album_model.dart';
+import 'package:music_up/theme/app_theme.dart';
 import 'package:music_up/theme/design_system.dart';
 
 class WantlistDialogs {
@@ -9,11 +11,12 @@ class WantlistDialogs {
     BuildContext context,
     Album wantlistAlbum,
   ) async {
+    final l10n = AppLocalizations.of(context);
     return showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Zur Sammlung hinzufügen'),
+          title: Text(l10n.addToCollection),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -24,42 +27,40 @@ class WantlistDialogs {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: DS.xs),
-                Text('Künstler: ${wantlistAlbum.artist}'),
-                Text('Jahr: ${wantlistAlbum.year}'),
-                Text('Medium: ${wantlistAlbum.medium}'),
+                Text(l10n.artistPrefix(wantlistAlbum.artist)),
+                Text(l10n.yearPrefix(wantlistAlbum.year)),
+                Text(l10n.mediumPrefix(wantlistAlbum.medium)),
                 if (wantlistAlbum.genre.isNotEmpty)
-                  Text('Genre: ${wantlistAlbum.genre}'),
-                
+                  Text(l10n.genrePrefix(wantlistAlbum.genre)),
+
                 const SizedBox(height: DS.md),
-                
+
                 Container(
                   padding: const EdgeInsets.all(DS.sm),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2E4F2E).withValues(alpha: 0.1),
+                    color: AppTheme.darkGreen.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(DS.xs),
-                    border: Border.all(color: const Color(0xFF2E4F2E).withValues(alpha: 0.3)),
+                    border: Border.all(color: AppTheme.darkGreen.withValues(alpha: 0.3)),
                   ),
                   child: Column(
                     children: [
-                      const Row(
+                      Row(
                         children: [
-                          Icon(Icons.info_outline, color: const Color(0xFF2E4F2E)),
-                          SizedBox(width: DS.xs),
+                          const Icon(Icons.info_outline, color: AppTheme.darkGreen),
+                          const SizedBox(width: DS.xs),
                           Text(
-                            'Was passiert:',
-                            style: TextStyle(
+                            l10n.whatHappens,
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: const Color(0xFF2E4F2E),
+                              color: AppTheme.darkGreen,
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: DS.xs),
-                      const Text(
-                        '• Album wird zu Ihrer Sammlung hinzugefügt\n'
-                        '• Album wird aus der Wantlist entfernt\n'
-                        '• Track-Informationen werden geladen',
-                        style: TextStyle(fontSize: 14),
+                      Text(
+                        l10n.whatHappensBody,
+                        style: const TextStyle(fontSize: 14),
                       ),
                     ],
                   ),
@@ -70,15 +71,15 @@ class WantlistDialogs {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Abbrechen'),
+              child: Text(l10n.cancel),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E4F2E),
+                backgroundColor: AppTheme.darkGreen,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Zur Sammlung hinzufügen'),
+              child: Text(l10n.addToCollection),
             ),
           ],
         );
@@ -90,16 +91,17 @@ class WantlistDialogs {
     BuildContext context,
     Album album,
   ) async {
+    final l10n = AppLocalizations.of(context);
     return showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Aus Wantlist entfernen'),
+          title: Text(l10n.removeFromWantlistTitle),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Möchten Sie "${album.name}" wirklich aus der Wantlist entfernen?'),
+              Text(l10n.removeFromWantlistConfirm(album.name)),
               const SizedBox(height: DS.md),
               Container(
                 padding: const EdgeInsets.all(DS.sm),
@@ -108,25 +110,25 @@ class WantlistDialogs {
                   borderRadius: BorderRadius.circular(DS.xs),
                   border: Border.all(color: Colors.orange[200]!),
                 ),
-                child: const Column(
+                child: Column(
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.warning_outlined, color: Colors.orange),
-                        SizedBox(width: DS.xs),
+                        const Icon(Icons.warning_outlined, color: Colors.orange),
+                        const SizedBox(width: DS.xs),
                         Text(
-                          'Hinweis:',
-                          style: TextStyle(
+                          l10n.note,
+                          style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.orange,
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: DS.xs),
+                    const SizedBox(height: DS.xs),
                     Text(
-                      'Das Album wird sowohl aus der lokalen Wantlist als auch aus Ihrer Discogs-Wantlist entfernt (falls konfiguriert).',
-                      style: TextStyle(fontSize: 14),
+                      l10n.removeFromWantlistNote,
+                      style: const TextStyle(fontSize: 14),
                     ),
                   ],
                 ),
@@ -136,12 +138,12 @@ class WantlistDialogs {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Abbrechen'),
+              child: Text(l10n.cancel),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Entfernen'),
+              child: Text(l10n.remove),
             ),
           ],
         );
@@ -166,9 +168,10 @@ class WantlistDialogs {
     BuildContext context,
     String error,
   ) {
+    final l10n = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Fehler: $error'),
+        content: Text(l10n.errorGeneric(error)),
         backgroundColor: Colors.red,
       ),
     );

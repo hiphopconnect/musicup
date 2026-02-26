@@ -1,323 +1,201 @@
 # MusicUp - Architecture Documentation
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
-MusicUp follows a **Clean Architecture** pattern with **Riverpod** state management, designed for cross-platform deployment (Android, iOS, Windows, macOS, Linux).
+MusicUp uses a **pragmatic Service-based architecture** with **StatefulWidget + setState** for state management. Services are created in `main.dart` and passed via constructor injection through the widget tree.
 
 ```
 lib/
-├── core/                    # Framework-agnostic business logic
-│   ├── error/               # Centralized error handling
-│   ├── platform/            # Platform-specific services
-│   ├── providers/           # Riverpod providers
-│   ├── repositories/        # Repository interfaces
-│   ├── responsive/          # Responsive design system
-│   └── services/            # Core business services
-├── models/                  # Data models
-├── screens/                 # UI screens (feature-based)
-├── services/                # Legacy services (being migrated)
-├── theme/                   # App theming
-└── widgets/                 # Reusable UI components
+├── main.dart                # App entry point, service wiring
+├── models/                  # Data models (Album, Track, DiscogsSearchResult)
+├── screens/                 # StatefulWidget screens (8 screens)
+├── services/                # Stateless service classes (15 services)
+├── theme/                   # App theming and design tokens
+└── widgets/                 # Reusable UI components (22 widgets)
 ```
 
-## 🔄 State Management
+## Data Flow
 
-### Riverpod Providers
+```
+User Input
+    |
+Screen (StatefulWidget)
+    | setState()
+Service Layer (stateless classes)
+    |
+Data Layer (JSON files / Discogs API / SharedPreferences)
+```
 
-We use **Riverpod** for modern, type-safe state management:
+Kein Repository Pattern, keine Provider, keine Abstraktionsschichten zwischen Screen und Service.
+
+## Service Architecture
+
+### Service-Kategorien
+
+| Kategorie | Services | Aufgabe |
+|-----------|----------|---------|
+| **Konfiguration** | ConfigManager | SharedPreferences Wrapper |
+| **Datenzugriff** | JsonService | File I/O (albums.json, wantlist.json) |
+| **Externe API** | DiscogsServiceUnified, DiscogsOAuthService, DiscogsAlbumService | Discogs API |
+| **Business Logic** | AlbumFilterService, AlbumEditService, WantlistSyncService, WantlistService | Kernoperationen |
+| **Formulare** | ValidationService, AutoSaveService | Validierung und Entwurfsspeicherung |
+| **Import/Export** | ImportExportService, FolderImportService | CSV/XML/JSON Import/Export |
+| **PDF-Export** | PdfExportService | PDF-Generierung fuer Sammlung und Wantlist |
+| **Utilities** | LoggerService, ToastService, AccessibilityService | Querschnittsfunktionen |
+
+### Dependency Wiring (main.dart)
 
 ```dart
-// Theme management
-@riverpod
-class ThemeNotifier extends _$ThemeNotifier {
-  @override
-  ThemeMode build() => configManager.getThemeMode();
-  
-  Future<void> updateTheme(ThemeMode mode) async {
-    await configManager.setThemeMode(mode);
-    state = mode;
+main()
+  -> ConfigManager()            // SharedPreferences laden
+  -> JsonService(configManager) // File I/O mit Config-Pfaden
+  -> MyApp(configManager, jsonService)
+       -> MainScreen(jsonService, onThemeChanged)
+       -> SettingsScreen(jsonService, onThemeChanged)
+```
+
+Services werden per **Constructor Injection** weitergegeben. Einige Screens erstellen zusaetzliche Services lokal in `initState()`:
+
+```dart
+// Beispiel: DiscogsSearchScreen
+void initState() {
+  _discogsService = DiscogsServiceUnified(token: widget.discogsToken);
+  _albumService = DiscogsAlbumService();
+}
+```
+
+### Service-Eigenschaften
+
+- **Stateless**: Services halten keinen eigenen State
+- **Keine Streams**: Keine reaktiven Patterns (StreamController etc.)
+- **Async via Future<T>**: Alle I/O-Operationen sind Future-basiert
+- **Testbar**: Mockbar via Constructor Injection (Mockito)
+
+## State Management
+
+### Pattern: StatefulWidget + setState
+
+Jeder Screen verwaltet seinen eigenen State lokal:
+
+```dart
+class _MainScreenState extends State<MainScreen> {
+  List<Album> _albums = [];
+  List<Album> _filteredAlbums = [];
+  bool _isLoading = true;
+
+  Future<void> _loadAlbums() async {
+    setState(() => _isLoading = true);
+    final albums = await widget.jsonService.loadAlbums();
+    setState(() {
+      _albums = albums;
+      _applyFiltersAndSort();
+      _isLoading = false;
+    });
   }
 }
-
-// Usage in widgets
-final themeMode = ref.watch(themeNotifierProvider);
 ```
 
-### Key Providers
+### State Lifting
 
-- **ThemeNotifier**: Theme mode management
-- **AlbumNotifier**: Album collection state
-- **ConfigManager**: App configuration
-- **PlatformService**: Platform-specific functionality
+Parent-Widgets verwalten State und reichen Daten + Callbacks an Children:
 
-## 📱 Responsive Design
+```
+MainScreen (State: albums, filters, loading)
+    |
+    +-- AlbumFiltersWidget (onFilterChanged callback)
+    +-- AlbumListWidget (albums list, onEdit/onDelete callbacks)
+```
 
-### Breakpoints
+### Cross-Screen Communication
+
+Screens geben Ergebnisse via `Navigator.pop(context, result)` zurueck:
 
 ```dart
-class ResponsiveBreakpoints {
-  static const double mobile = 480;
-  static const double tablet = 768;
-  static const double desktop = 1024;
-  static const double largeDesktop = 1440;
+final result = await Navigator.push(context,
+  MaterialPageRoute(builder: (_) => EditAlbumScreen(...)));
+if (result == true) {
+  _loadAlbums(); // Daten neu laden
 }
 ```
 
-### Layout Adaptation
+## Models
 
-```dart
-ResponsiveLayout(
-  mobile: MobileLayout(),
-  tablet: TabletLayout(),
-  desktop: DesktopLayout(),
-)
-```
+Zentrale Datenmodelle in `lib/models/album_model.dart`:
 
-### Platform-Specific UI
+- **Album**: Hauptmodell mit Titel, Artist, Tracks, Medium, etc.
+- **Track**: Einzelner Track mit Titel und Dauer
+- **DiscogsSearchResult**: Ergebnis der Discogs-API-Suche
 
-- **Mobile (Android/iOS)**: Bottom/Tab navigation
-- **Tablet**: Rail navigation
-- **Desktop**: Sidebar navigation with system tray support
+## Testing
 
-## 🏪 Repository Pattern
-
-### Album Repository
-
-```dart
-abstract class AlbumRepository {
-  Future<List<Album>> getAlbums();
-  Future<void> saveAlbum(Album album);
-  Future<void> updateAlbum(Album album);
-  Future<void> deleteAlbum(String id);
-  Future<List<Album>> searchAlbums(String query);
-  Future<AlbumStats> getAlbumStats();
-}
-```
-
-### Implementation
-
-```dart
-class UnifiedAlbumService implements AlbumRepository {
-  // Consolidates:
-  // - JSON storage operations
-  // - Validation logic
-  // - Import/Export functionality
-  // - Search and filtering
-}
-```
-
-## ⚠️ Error Handling
-
-### Centralized Error Management
-
-```dart
-class AppErrorHandler {
-  static void handle(
-    Object error,
-    StackTrace? stackTrace, {
-    String? context,
-    ErrorLevel level = ErrorLevel.error,
-  });
-}
-```
-
-### Error Types
-
-- **AppException.network**: Network-related errors
-- **AppException.storage**: Local storage errors
-- **AppException.validation**: Data validation errors
-- **AppException.unknown**: Unexpected errors
-
-### Usage
-
-```dart
-try {
-  await albumService.saveAlbum(album);
-} catch (error) {
-  throw AppErrorHandler.handleStorageError(
-    error,
-    context: 'MainScreen.saveAlbum',
-  );
-}
-```
-
-## 🔧 Services Architecture
-
-### Core Services (New)
-
-1. **UnifiedAlbumService**: Album CRUD operations
-2. **PlatformService**: Platform-specific functionality
-3. **ConfigManager**: App configuration
-4. **ValidationService**: Data validation
-5. **LoggerService**: Centralized logging
-
-### Legacy Services (Being Phased Out)
-
-- Multiple specialized services consolidated into fewer, more focused services
-- Migrating from direct service injection to repository pattern
-
-## 🚀 Platform Support
-
-### Desktop Features
-
-- **Window Management**: Resizing, minimizing, positioning
-- **System Tray**: Background operation with context menu
-- **Auto-Updates**: Automatic update checking
-- **Native Shortcuts**: Keyboard shortcuts per platform
-
-### Mobile Features
-
-- **Responsive Navigation**: Bottom nav (Android) / Tab bar (iOS)
-- **Platform Theming**: Material (Android) / Cupertino hints (iOS)
-- **Deep Linking**: URL scheme support
-- **Background Tasks**: Limited background processing
-
-### Platform-Specific Optimizations
-
-```dart
-// Platform detection
-PlatformType platform = ResponsiveLayout.getCurrentPlatform();
-
-// Platform-specific UI
-EdgeInsets padding = PlatformAdaptive.getPlatformPadding(context);
-BorderRadius radius = PlatformAdaptive.getPlatformBorderRadius();
-```
-
-## 📊 Data Flow
-
-```
-UI Layer (Screens/Widgets)
-    ↓
-State Management (Riverpod Providers)
-    ↓
-Repository Layer (Album Repository)
-    ↓
-Service Layer (Unified Services)
-    ↓
-Data Layer (JSON Files / External APIs)
-```
-
-## 🧪 Testing Strategy
-
-### Test Coverage Goals
-
-- **Unit Tests**: 80%+ coverage for business logic
-- **Widget Tests**: Critical UI components
-- **Integration Tests**: End-to-end workflows
-- **Golden Tests**: UI regression testing
-
-### Test Structure
+### Struktur
 
 ```
 test/
-├── core/
-│   ├── services/         # Service unit tests
-│   ├── repositories/     # Repository tests
-│   └── responsive/       # Responsive layout tests
-├── widgets/              # Widget tests
-├── screens/              # Screen tests
-└── integration/          # E2E tests
+├── album_model_test.dart           # Model Unit Tests
+├── album_filter_service_test.dart  # Service Unit Tests
+├── config_manager_test.dart
+├── json_service_test.dart
+├── validation_service_test.dart
+├── auto_save_service_test.dart
+├── discogs_service_test.dart
+├── import_export_service_test.dart
+├── logger_service_test.dart
+├── wantlist_sync_service_test.dart
+├── add_album_screen_test.dart      # Screen Widget Tests
+├── edit_album_screen_test.dart
+├── main_screen_test.dart
+├── album_form_widget_test.dart     # Widget Tests
+├── album_list_widget_test.dart
+└── integration_test.dart           # Integration Tests
 ```
 
-## 🔄 Migration Path
+### Test-Ansatz
 
-### From Legacy to Modern Architecture
-
-1. **Phase 1**: Riverpod integration ✅
-2. **Phase 2**: Service consolidation ✅
-3. **Phase 3**: Repository pattern ✅
-4. **Phase 4**: Error handling ✅
-5. **Phase 5**: Responsive design ✅
-6. **Phase 6**: Test coverage improvement ✅
-
-### Breaking Changes
-
-- State management moved from setState to Riverpod
-- Service injection replaced with repository pattern
-- Manual theming replaced with provider-based theming
-
-## 📦 Build & Deployment
-
-### Multi-Platform Builds
+- **Unit Tests**: Services via Mockito testen (Constructor Injection)
+- **Widget Tests**: Screens mit gemockten Services
+- **Integration Tests**: End-to-End Workflows
 
 ```bash
-./build_all_platforms.sh
+flutter test                                    # Alle Tests
+flutter test test/json_service_test.dart        # Einzelner Test
+flutter test --coverage                         # Mit Coverage
 ```
 
-Builds for:
-- Android (APK + AAB)
-- iOS (requires macOS)
-- Windows (MSI installer)
-- macOS (DMG package)
-- Linux (DEB + AppImage)
+## Build & Deployment
 
-### CI/CD Pipeline
+### Build-Skripte
 
-1. **Code Quality**: Linting, formatting, analysis
-2. **Testing**: Unit, widget, integration tests
-3. **Building**: Multi-platform builds
-4. **Deployment**: Platform-specific stores/repositories
+| Skript | Zielplattform |
+|--------|---------------|
+| `create_apk.sh` | Android APK |
+| `create_deb.sh` | Linux .deb Paket |
+| `create_exe.sh` | Windows |
+| `create_ios.sh` | iOS |
+| `create_macos.sh` | macOS |
+| `build_all_platforms.sh` | Alle Plattformen |
+| `update_version.sh` | Versionsnummer aktualisieren |
 
-## 🔧 Development Guidelines
+### Versionierung
 
-### Code Style
+- Version in `pubspec.yaml` (z.B. `2.2.0+11`)
+- `update_version.sh` aktualisiert: pubspec.yaml, README.md, Android build.gradle, DEBIAN/control, version.json
+- Pre-commit Hook erhoeht Build-Nummer automatisch
 
-- Follow Dart/Flutter conventions
-- Use `dart format` and `flutter analyze`
-- Implement proper error handling
-- Write comprehensive tests
+## Known Limitations
 
-### Architecture Principles
+### Prop Drilling
 
-- **Single Responsibility**: Each class has one reason to change
-- **Dependency Inversion**: Depend on abstractions, not concretions
-- **Open/Closed**: Open for extension, closed for modification
-- **Interface Segregation**: Many specific interfaces vs. one general
+`jsonService` und `onThemeChanged` werden manuell durch den Widget-Tree gereicht. Bei tieferen Hierarchien wird das unuebersichtlich.
 
-### Performance Considerations
+### Inkonsistente Service-Instanziierung
 
-- Lazy loading for large lists
-- Image caching for album artwork
-- Debounced search queries
-- Pagination for large datasets
-- Platform-appropriate animations
+Manche Screens erstellen eigene Service-Instanzen in `initState()` statt sie von oben zu erhalten. Das fuehrt zu mehreren Instanzen desselben Services.
 
-## 🔍 Monitoring & Analytics
+### Manuelles Cross-Screen State
 
-### Logging
+Aenderungen in einem Screen (z.B. Album bearbeiten) erfordern manuelles Neuladen im vorherigen Screen. Es gibt keinen automatischen Synchronisationsmechanismus.
 
-```dart
-LoggerService.logInfo('User action performed');
-LoggerService.logError('Error occurred', error);
-```
+### Moegliche Verbesserung
 
-### Error Tracking
-
-- Development: Console logging
-- Production: Crash reporting integration ready
-- User Feedback: In-app error reporting
-
-### Performance Monitoring
-
-- Flutter Inspector for development
-- Platform-specific profiling tools
-- Memory usage monitoring
-- App startup time tracking
-
-## 🚀 Future Enhancements
-
-### Planned Features
-
-1. **Cloud Sync**: Cross-device synchronization
-2. **Advanced Search**: Full-text search with indexing
-3. **Social Features**: Sharing collections, recommendations
-4. **AI Integration**: Smart categorization, duplicate detection
-5. **Offline Support**: Full offline-first architecture
-
-### Technical Debt
-
-- Complete migration from legacy services
-- Implement proper dependency injection container
-- Add comprehensive error recovery mechanisms
-- Improve test coverage to 90%+
-- Add performance benchmarking
+Ein einfacher ServiceLocator (ohne externe Packages) wuerde alle drei Probleme loesen, ohne die Architektur wesentlich zu verkomplizieren.

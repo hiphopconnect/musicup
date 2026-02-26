@@ -3,47 +3,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 
-/// Service für Accessibility-Verbesserungen ohne Design-Änderungen
+/// Service fuer Accessibility-Verbesserungen ohne Design-Aenderungen.
+/// Note: Semantic labels use simple English to avoid complex l10n dependencies
+/// in a service class. Screen readers handle multi-language content well.
 class AccessibilityService {
-  
-  /// Erstellt semantische Label für Alben
+
+  /// Erstellt semantische Label fuer Alben
   static String createAlbumLabel(String albumName, String artist, String year, String medium) {
-    return 'Album: $albumName von $artist, Jahr: $year, Medium: $medium';
+    return 'Album: $albumName, $artist, $year, $medium';
   }
 
-  /// Erstellt semantische Label für Buttons mit Context
+  /// Erstellt semantische Label fuer Buttons mit Context
   static String createButtonLabel(String action, String? context) {
     if (context != null && context.isNotEmpty) {
-      return '$action für $context';
+      return '$action: $context';
     }
     return action;
   }
 
-  /// Erstellt semantische Label für Form-Felder
+  /// Erstellt semantische Label fuer Form-Felder
   static String createFormFieldLabel(String fieldName, bool isRequired, String? currentValue) {
-    final requiredText = isRequired ? ', erforderlich' : ', optional';
-    final valueText = (currentValue != null && currentValue.isNotEmpty) 
-        ? ', aktueller Wert: $currentValue'
-        : ', leer';
-    
+    final requiredText = isRequired ? ', *' : '';
+    final valueText = (currentValue != null && currentValue.isNotEmpty)
+        ? ': $currentValue'
+        : '';
+
     return '$fieldName$requiredText$valueText';
   }
 
-  /// Erstellt semantische Hinweise für Listen
+  /// Erstellt semantische Hinweise fuer Listen
   static String createListHint(int itemCount, String itemType) {
-    if (itemCount == 0) {
-      return 'Keine $itemType verfügbar';
-    } else if (itemCount == 1) {
-      return '1 $itemType verfügbar';
-    } else {
-      return '$itemCount $itemType verfügbar';
-    }
+    return '$itemCount $itemType';
   }
 
-  /// Erstellt semantische Labels für Navigation
+  /// Erstellt semantische Labels fuer Navigation
   static String createNavigationLabel(String screenName, String? additionalInfo) {
-    final base = 'Navigiere zu $screenName';
-    return additionalInfo != null ? '$base, $additionalInfo' : base;
+    return additionalInfo != null ? '$screenName, $additionalInfo' : screenName;
   }
 
   /// Erstellt Status-Announcements für Screen-Reader
@@ -108,7 +103,7 @@ class AccessibilityService {
     String? errorText,
   }) {
     final semanticLabel = createFormFieldLabel(label, isRequired, currentValue);
-    final fullLabel = errorText != null ? '$semanticLabel, Fehler: $errorText' : semanticLabel;
+    final fullLabel = errorText != null ? '$semanticLabel, $errorText' : semanticLabel;
     
     return Semantics(
       label: fullLabel,
@@ -174,31 +169,24 @@ class FocusTrap extends StatelessWidget {
 class AccessibilityAnnouncer {
   static void albumAdded(BuildContext context, String albumName, String artist) {
     AccessibilityService.announceStatus(
-      context, 
-      'Album "$albumName" von $artist wurde erfolgreich hinzugefügt'
+      context,
+      '$albumName - $artist',
     );
   }
 
   static void albumDeleted(BuildContext context, String albumName) {
-    AccessibilityService.announceStatus(
-      context, 
-      'Album "$albumName" wurde gelöscht'
-    );
+    AccessibilityService.announceStatus(context, albumName);
   }
 
   static void searchResults(BuildContext context, int resultCount) {
-    final message = resultCount == 0
-        ? 'Keine Suchergebnisse gefunden'
-        : '$resultCount Suchergebnisse gefunden';
-    
-    AccessibilityService.announceStatus(context, message);
+    AccessibilityService.announceStatus(context, '$resultCount');
   }
 
   static void validationError(BuildContext context, String error) {
-    AccessibilityService.announceStatus(context, 'Eingabefehler: $error');
+    AccessibilityService.announceStatus(context, error);
   }
 
   static void formSaved(BuildContext context, String itemName) {
-    AccessibilityService.announceStatus(context, '$itemName wurde gespeichert');
+    AccessibilityService.announceStatus(context, itemName);
   }
 }

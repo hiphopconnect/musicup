@@ -1,6 +1,7 @@
 // lib/widgets/discogs_search_results_widget.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/loading_widget.dart';
@@ -30,20 +31,22 @@ class DiscogsSearchResultsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     if (isLoading) {
-      return const LoadingWidget(message: 'Suche läuft...');
+      return LoadingWidget(message: l10n.searchRunning);
     }
 
     if (results.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search, size: 64, color: Colors.grey),
-            SizedBox(height: DS.md),
+            const Icon(Icons.search, size: 64, color: Colors.grey),
+            const SizedBox(height: DS.md),
             Text(
-              'Keine Ergebnisse. Versuchen Sie nach einem Künstler oder Album zu suchen.',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
+              l10n.noResultsTrySearch,
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
               textAlign: TextAlign.center,
             ),
           ],
@@ -93,9 +96,9 @@ class _SearchResultCard extends StatelessWidget {
           result.title,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: _buildSubtitle(),
+        subtitle: _buildSubtitle(context),
         isThreeLine: true,
-        trailing: _buildActionButtons(),
+        trailing: _buildActionButtons(context),
         onTap: onTap,
       ),
     );
@@ -132,31 +135,33 @@ class _SearchResultCard extends StatelessWidget {
     );
   }
 
-  Widget _buildSubtitle() {
+  Widget _buildSubtitle(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Künstler: ${result.artist}'),
-        Text('Jahr: ${result.year}'),
-        Text('Format: ${result.format}'),
+        Text(l10n.artistPrefix(result.artist)),
+        Text(l10n.yearPrefix(result.year)),
+        Text(l10n.formatPrefix(result.format)),
         if (result.genre.isNotEmpty)
-          Text('Genre: ${result.genre}'),
+          Text(l10n.genrePrefix(result.genre)),
       ],
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
           icon: const Icon(Icons.add_circle_outline),
-          tooltip: 'Zur Sammlung hinzufügen',
+          tooltip: l10n.addToCollection,
           onPressed: onAddToCollection,
         ),
         IconButton(
           icon: const Icon(Icons.favorite_border),
-          tooltip: 'Zur Wantlist hinzufügen',
+          tooltip: l10n.addToWantlistTooltipShort,
           onPressed: onAddToWantlist,
         ),
       ],
@@ -165,17 +170,18 @@ class _SearchResultCard extends StatelessWidget {
 }
 
 class EmptySearchResultsWidget extends StatelessWidget {
-  final String message;
+  final String? message;
   final IconData icon;
 
   const EmptySearchResultsWidget({
     super.key,
-    this.message = 'Keine Ergebnisse gefunden.',
+    this.message,
     this.icon = Icons.search_off,
   });
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -183,7 +189,7 @@ class EmptySearchResultsWidget extends StatelessWidget {
           Icon(icon, size: 64, color: Colors.grey),
           const SizedBox(height: DS.md),
           Text(
-            message,
+            message ?? l10n.noResultsFound,
             style: const TextStyle(fontSize: 16, color: Colors.grey),
             textAlign: TextAlign.center,
           ),

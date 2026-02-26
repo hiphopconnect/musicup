@@ -1,23 +1,27 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
+import 'package:music_up/services/logger_service.dart';
+import 'package:music_up/theme/app_theme.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/app_layout.dart';
 import 'package:music_up/widgets/section_card.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../services/json_service.dart';
-import '../widgets/app_info_widget.dart';
-import '../widgets/import_export_widget.dart';
-import '../widgets/oauth_setup_widget.dart';
+import 'package:music_up/screens/help_screen.dart';
+import 'package:music_up/services/service_locator.dart';
+import 'package:music_up/widgets/import_export_widget.dart';
+import 'package:music_up/widgets/oauth_setup_widget.dart';
 
 class SettingsScreen extends StatefulWidget {
-  final JsonService jsonService;
   final Function(ThemeMode)? onThemeChanged;
+  final Function(Locale)? onLocaleChanged;
 
   const SettingsScreen({
     super.key,
-    required this.jsonService,
     this.onThemeChanged,
+    this.onLocaleChanged,
   });
 
   @override
@@ -31,14 +35,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoading = true;
   bool _dataChanged = false;
   ThemeMode _currentThemeMode = ThemeMode.system;
+  late Locale _currentLocale;
+  String _appVersion = '';
+  String _logInfo = '';
+  late String _currentLogLevel;
 
   @override
   void initState() {
     super.initState();
     _collectionPathController = TextEditingController();
     _wantlistPathController = TextEditingController();
-    _currentThemeMode = widget.jsonService.configManager.getThemeMode();
+    _currentThemeMode = sl.configManager.getThemeMode();
+    _currentLocale = sl.configManager.getLocale();
+    _currentLogLevel = sl.configManager.getLogLevel();
     _loadSettings();
+    _loadPackageInfo();
+    _loadLogInfo();
   }
 
   @override
@@ -48,10 +60,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
+  Future<void> _loadPackageInfo() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _appVersion = '${info.version}+${info.buildNumber}';
+      });
+    }
+  }
+
+  Future<void> _loadLogInfo() async {
+    try {
+      final size = await LoggerService.getCurrentLogSize();
+      final files = LoggerService.getLogFiles();
+      if (mounted) {
+        String sizeStr;
+        if (size > 1024 * 1024) {
+          sizeStr = '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
+        } else if (size > 1024) {
+          sizeStr = '${(size / 1024).toStringAsFixed(1)} KB';
+        } else {
+          sizeStr = '$size Bytes';
+        }
+        setState(() {
+          _logInfo = AppLocalizations.of(context).logFilesInfo(files.length, sizeStr);
+        });
+      }
+    } catch (_) {
+      // Ignore errors loading log info
+    }
+  }
+
   Future<void> _loadSettings() async {
     setState(() => _isLoading = true);
     try {
-      final cm = widget.jsonService.configManager;
+      final cm = sl.configManager;
       final collectionPath = cm.getCollectionFilePath();
       final wantlistPath = await cm.getWantlistFilePathOrDefault();
       setState(() {
@@ -60,10 +103,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      LoggerService.error('Settings load', e, 'SettingsScreen');
       setState(() => _isLoading = false);
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading settings: $e')),
+        SnackBar(content: Text(l10n.errorLoadingSettings('$e'))),
       );
     }
   }
@@ -79,28 +124,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (result != null && result.files.single.path != null) {
         String path = result.files.single.path!;
 
-        // WICHTIG: Erst ConfigManager aktualisieren
-        await widget.jsonService.configManager.setCollectionFilePath(path);
+        await sl.configManager.setCollectionFilePath(path);
+        await sl.configManager.loadConfig();
 
-        // DANN die Konfiguration neu laden
-        await widget.jsonService.configManager.loadConfig();
-
-        // ERST DANACH setState
         if (mounted) {
           setState(() {
             _collectionPathController.text = path;
             _dataChanged = true;
           });
 
+          final l10n = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Collection path updated!')),
+            SnackBar(content: Text(l10n.collectionPathUpdated)),
           );
         }
       }
     } catch (e) {
+      LoggerService.error('Collection file select', e, 'SettingsScreen');
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error selecting file: $e')),
+        SnackBar(content: Text(l10n.errorFileSelection('$e'))),
       );
     }
   }
@@ -117,39 +161,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
         String path = result.files.single.path!;
         setState(() {
           _wantlistPathController.text = path;
-          _dataChanged = true; // auch hier setzen, falls gewünscht
+          _dataChanged = true;
         });
-        await widget.jsonService.configManager.setWantlistFilePath(path);
+        await sl.configManager.setWantlistFilePath(path);
 
         if (!mounted) return;
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Wantlist path updated!')),
+          SnackBar(content: Text(l10n.wantlistPathUpdated)),
         );
       }
     } catch (e) {
+      LoggerService.error('Wantlist file select', e, 'SettingsScreen');
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error selecting file: $e')),
+        SnackBar(content: Text(l10n.errorFileSelection('$e'))),
       );
     }
   }
 
   Future<void> _resetSettings() async {
+    final l10n = AppLocalizations.of(context);
     bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Reset Settings'),
-        content: const Text(
-            'Are you sure you want to reset all settings to default?'),
+        title: Text(l10n.resetSettings),
+        content: Text(l10n.resetSettingsConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Reset'),
+            child: Text(l10n.resetSettings),
           ),
         ],
       ),
@@ -157,19 +204,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (confirm == true) {
       try {
-        await widget.jsonService.configManager.resetConfig();
+        await sl.configManager.resetConfig();
         await _loadSettings();
 
         _dataChanged = true;
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settings reset to default!')),
+          SnackBar(content: Text(l10n.settingsReset)),
         );
       } catch (e) {
+        LoggerService.error('Settings reset', e, 'SettingsScreen');
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error resetting settings: $e')),
+          SnackBar(content: Text(l10n.errorResetting('$e'))),
         );
       }
     }
@@ -181,6 +229,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required VoidCallback onSelectFile,
     required IconData icon,
   }) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -196,11 +245,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 controller: controller,
                 readOnly: true,
                 decoration: InputDecoration(
-                  hintText: 'No file selected',
+                  hintText: l10n.noFileSelected,
                   prefixIcon: Icon(icon),
                   border: const OutlineInputBorder(),
                   filled: true,
-                  fillColor: Colors.grey[100],
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 ),
               ),
             ),
@@ -208,12 +257,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ElevatedButton.icon(
               onPressed: onSelectFile,
               icon: const Icon(Icons.folder_open),
-              label: const Text('Browse'),
+              label: Text(l10n.browse),
             ),
           ],
         ),
       ],
     );
+  }
+
+  String _logLevelLabel(String level) {
+    final l10n = AppLocalizations.of(context);
+    switch (level) {
+      case 'debug':
+        return l10n.logLevelDebug;
+      case 'info':
+        return l10n.logLevelInfo;
+      case 'warning':
+        return l10n.logLevelWarning;
+      case 'error':
+        return l10n.logLevelError;
+      default:
+        return level;
+    }
   }
 
   Widget _buildSectionTitle(String title) {
@@ -230,57 +295,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _onThemeModeChanged(ThemeMode? value) {
+    if (value != null && value != _currentThemeMode) {
+      setState(() => _currentThemeMode = value);
+      sl.configManager.setThemeMode(value);
+      widget.onThemeChanged?.call(value);
+    }
+  }
+
+  void _onLocaleChanged(Locale? value) {
+    if (value != null && value != _currentLocale) {
+      setState(() => _currentLocale = value);
+      sl.configManager.setLocale(value);
+      widget.onLocaleChanged?.call(value);
+    }
+  }
+
+  Widget _buildLanguageSection() {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        children: [
+          RadioListTile<Locale>(
+            title: const Text('Deutsch'),
+            value: const Locale('de'),
+            groupValue: _currentLocale,
+            onChanged: _onLocaleChanged,
+            secondary: const Icon(Icons.language),
+          ),
+          RadioListTile<Locale>(
+            title: const Text('English'),
+            value: const Locale('en'),
+            groupValue: _currentLocale,
+            onChanged: _onLocaleChanged,
+            secondary: const Icon(Icons.language),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildExpandableThemeSection() {
+    final l10n = AppLocalizations.of(context);
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         children: [
           RadioListTile<ThemeMode>(
-            title: const Text('Hell'),
-            subtitle: const Text('Immer helles Design verwenden'),
+            title: Text(l10n.themeLight),
+            subtitle: Text(l10n.themeLightDesc),
             value: ThemeMode.light,
             groupValue: _currentThemeMode,
-            onChanged: (ThemeMode? value) {
-              if (value != null && value != _currentThemeMode) {
-                setState(() {
-                  _currentThemeMode = value;
-                });
-                widget.jsonService.configManager.setThemeMode(value);
-                widget.onThemeChanged?.call(value);
-              }
-            },
+            onChanged: _onThemeModeChanged,
             secondary: const Icon(Icons.light_mode),
           ),
           RadioListTile<ThemeMode>(
-            title: const Text('Dunkel'),
-            subtitle: const Text('Immer dunkles Design verwenden'),
+            title: Text(l10n.themeDark),
+            subtitle: Text(l10n.themeDarkDesc),
             value: ThemeMode.dark,
             groupValue: _currentThemeMode,
-            onChanged: (ThemeMode? value) {
-              if (value != null && value != _currentThemeMode) {
-                setState(() {
-                  _currentThemeMode = value;
-                });
-                widget.jsonService.configManager.setThemeMode(value);
-                widget.onThemeChanged?.call(value);
-              }
-            },
+            onChanged: _onThemeModeChanged,
             secondary: const Icon(Icons.dark_mode),
           ),
           RadioListTile<ThemeMode>(
-            title: const Text('System'),
-            subtitle: const Text('Systemeinstellung verwenden'),
+            title: Text(l10n.themeSystem),
+            subtitle: Text(l10n.themeSystemDesc),
             value: ThemeMode.system,
             groupValue: _currentThemeMode,
-            onChanged: (ThemeMode? value) {
-              if (value != null && value != _currentThemeMode) {
-                setState(() {
-                  _currentThemeMode = value;
-                });
-                widget.jsonService.configManager.setThemeMode(value);
-                widget.onThemeChanged?.call(value);
-              }
-            },
+            onChanged: _onThemeModeChanged,
             secondary: const Icon(Icons.settings_suggest),
           ),
         ],
@@ -288,118 +370,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildThemeSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'App-Design',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: DS.xs),
-        Card(
-          child: Column(
-            children: [
-              RadioListTile<ThemeMode>(
-                title: const Text('Hell'),
-                subtitle: const Text('Immer helles Design'),
-                value: ThemeMode.light,
-                groupValue: _currentThemeMode,
-                onChanged: (ThemeMode? value) {
-                  if (value != null && value != _currentThemeMode) {
-                    // Schutz vor doppelten Updates
-                    setState(() {
-                      _currentThemeMode = value;
-                    });
-                    widget.jsonService.configManager.setThemeMode(value);
-                    widget.onThemeChanged?.call(value);
-                  }
-                },
-              ),
-              RadioListTile<ThemeMode>(
-                title: const Text('Dunkel'),
-                subtitle: const Text('Immer dunkles Design'),
-                value: ThemeMode.dark,
-                groupValue: _currentThemeMode,
-                onChanged: (ThemeMode? value) {
-                  if (value != null && value != _currentThemeMode) {
-                    // Schutz vor doppelten Updates
-                    setState(() {
-                      _currentThemeMode = value;
-                    });
-                    widget.jsonService.configManager.setThemeMode(value);
-                    widget.onThemeChanged?.call(value);
-                  }
-                },
-              ),
-              RadioListTile<ThemeMode>(
-                title: const Text('System'),
-                subtitle: const Text('Folgt den Systemeinstellungen'),
-                value: ThemeMode.system,
-                groupValue: _currentThemeMode,
-                onChanged: (ThemeMode? value) {
-                  if (value != null && value != _currentThemeMode) {
-                    // Schutz vor doppelten Updates
-                    setState(() {
-                      _currentThemeMode = value;
-                    });
-                    widget.jsonService.configManager.setThemeMode(value);
-                    widget.onThemeChanged?.call(value);
-                  }
-                },
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     if (_isLoading) {
-      return const AppLayout(
-        title: 'Einstellungen',
-        body: Center(child: CircularProgressIndicator()),
+      return AppLayout(
+        title: l10n.settings,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return PopScope(
       canPop: false,
-      // ignore: deprecated_member_use
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
           Navigator.pop(context, _dataChanged);
         }
       },
       child: AppLayout(
-        title: 'Einstellungen',
-        appBarColor: const Color(0xFF2C2C2C), // Charcoal
+        title: l10n.settings,
+        appBarColor: AppTheme.charcoal,
         actions: [
           IconButton(
             onPressed: _resetSettings,
             icon: const Icon(Icons.restore),
-            tooltip: 'Einstellungen zurücksetzen',
+            tooltip: l10n.resetSettings,
           ),
         ],
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(DS.md),
           child: Column(
             children: [
-              // Dateipfade Sektion
               SectionCard(
-                title: 'Dateipfade',
+                title: l10n.filePaths,
                 child: Column(
                   children: [
                     _buildFilePathField(
-                      label: 'Collection JSON-Datei',
+                      label: l10n.collectionJsonFile,
                       controller: _collectionPathController,
                       onSelectFile: _selectCollectionFile,
                       icon: Icons.library_music,
                     ),
                     const SizedBox(height: DS.md),
                     _buildFilePathField(
-                      label: 'Wantlist JSON-Datei',
+                      label: l10n.wantlistJsonFile,
                       controller: _wantlistPathController,
                       onSelectFile: _selectWantlistFile,
                       icon: Icons.favorite,
@@ -410,56 +425,108 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               const SizedBox(height: DS.lg),
 
-              // Discogs Integration Sektion
               SectionCard(
-                title: 'Discogs Integration',
+                title: l10n.discogsIntegration,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    OAuthSetupWidget(
-                      configManager: widget.jsonService.configManager,
-                    ),
+                    const OAuthSetupWidget(),
                   ],
                 ),
               ),
 
               const SizedBox(height: DS.lg),
 
-              // Import/Export Sektion
               SectionCard(
-                title: 'Import/Export',
-                child: ImportExportWidget(
-                  jsonService: widget.jsonService,
-                ),
+                title: l10n.importExport,
+                child: const ImportExportWidget(),
               ),
 
               const SizedBox(height: DS.lg),
 
-              // Design-Sektion
-              _buildSectionTitle('Erscheinungsbild'),
+              _buildSectionTitle(l10n.appearance),
               _buildExpandableThemeSection(),
 
               const SizedBox(height: 16),
 
-              // App-Informationen Sektion
-              _buildSectionTitle('Über MusicUp'),
+              _buildSectionTitle(l10n.language),
+              _buildLanguageSection(),
+
+              const SizedBox(height: 16),
+
+              _buildSectionTitle(l10n.advanced),
+              Card(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: ListTile(
+                  leading: const Icon(Icons.tune),
+                  title: Text(l10n.logLevel),
+                  subtitle: Text(_logLevelLabel(_currentLogLevel)),
+                  trailing: DropdownButton<String>(
+                    value: _currentLogLevel,
+                    underline: const SizedBox.shrink(),
+                    items: const [
+                      DropdownMenuItem(value: 'debug', child: Text('Debug')),
+                      DropdownMenuItem(value: 'info', child: Text('Info')),
+                      DropdownMenuItem(value: 'warning', child: Text('Warning')),
+                      DropdownMenuItem(value: 'error', child: Text('Error')),
+                    ],
+                    onChanged: (value) async {
+                      if (value != null) {
+                        setState(() => _currentLogLevel = value);
+                        await sl.configManager.setLogLevel(value);
+                        LoggerService.setMinLevel(LoggerService.parseLogLevel(value));
+                      }
+                    },
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              _buildSectionTitle(l10n.aboutMusicUp),
               Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Column(
                   children: [
-                    const ListTile(
-                      leading: Icon(Icons.info),
-                      title: Text('Version'),
-                      subtitle: Text('1.1.3'),
+                    ListTile(
+                      leading: const Icon(Icons.help_outline),
+                      title: Text(l10n.help),
+                      subtitle: Text(l10n.helpSubtitle),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const HelpScreen(),
+                          ),
+                        );
+                      },
                     ),
-                    const ListTile(
-                      leading: Icon(Icons.gavel),
-                      title: Text('Lizenz'),
-                      subtitle: Text('Proprietary Software'),
+                    ListTile(
+                      leading: const Icon(Icons.tour),
+                      title: Text(l10n.startTour),
+                      subtitle: Text(l10n.startTourSubtitle),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: () async {
+                        await sl.configManager.resetTourCompleted();
+                        if (context.mounted) {
+                          Navigator.pop(context, 'startTour');
+                        }
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.info),
+                      title: Text(l10n.version),
+                      subtitle: Text(_appVersion.isEmpty ? '...' : _appVersion),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.gavel),
+                      title: Text(l10n.license),
+                      subtitle: Text(l10n.proprietarySoftware),
                     ),
                     ListTile(
                       leading: const Icon(Icons.person),
-                      title: const Text('Entwickler'),
+                      title: Text(l10n.developer),
                       subtitle: const Text('Michael Milke (Nobo)'),
                       onTap: () async {
                         final Uri url =
@@ -471,7 +538,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     ListTile(
                       leading: const Icon(Icons.email),
-                      title: const Text('Kontakt'),
+                      title: Text(l10n.contact),
                       subtitle: const Text('nobo_code@posteo.de'),
                       onTap: () async {
                         final Uri emailUri = Uri(
@@ -485,8 +552,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     ListTile(
                       leading: const Icon(Icons.bug_report),
-                      title: const Text('Problem melden'),
-                      subtitle: const Text('E-Mail an Support senden'),
+                      title: Text(l10n.reportProblem),
+                      subtitle: Text(l10n.reportProblemSubtitle),
                       trailing: const Icon(Icons.arrow_forward_ios),
                       onTap: () async {
                         final Uri emailUri = Uri(
@@ -501,8 +568,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       },
                     ),
                     ListTile(
+                      leading: const Icon(Icons.description),
+                      title: Text(l10n.sendLogs),
+                      subtitle: Text(_logInfo.isEmpty ? l10n.sendLogsDefault : _logInfo),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: () async {
+                        await LoggerService.shareLogs(context);
+                        _loadLogInfo();
+                      },
+                    ),
+                    ListTile(
                       leading: const Icon(Icons.code),
-                      title: const Text('Repository'),
+                      title: Text(l10n.repository),
                       subtitle: const Text('github.com/hiphopconnect/musicup'),
                       trailing: const Icon(Icons.arrow_forward_ios),
                       onTap: () async {

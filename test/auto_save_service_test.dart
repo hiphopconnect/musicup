@@ -125,11 +125,6 @@ void main() {
     });
 
     test('Debounce prevents multiple saves', () async {
-      int saveCount = 0;
-      
-      // Override to count saves (this is just for testing concept)
-      // In real scenario, we'd check SharedPreferences write count
-      
       // Make multiple rapid saves
       for (int i = 0; i < 10; i++) {
         autoSaveService.saveFormData('debounce_test', {'count': i});
@@ -145,8 +140,11 @@ void main() {
     });
 
     test('Multiple forms can have separate drafts', () async {
-      // Save different data for different forms
+      // Save form_a and wait for debounce to complete
       autoSaveService.saveFormData('form_a', {'data': 'A'});
+      await Future.delayed(const Duration(seconds: 3));
+
+      // Save form_b and wait for debounce to complete
       autoSaveService.saveFormData('form_b', {'data': 'B'});
       await Future.delayed(const Duration(seconds: 3));
 

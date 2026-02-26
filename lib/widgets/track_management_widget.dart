@@ -1,10 +1,11 @@
 // lib/widgets/track_management_widget.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/models/album_model.dart';
+import 'package:music_up/theme/app_theme.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/section_card.dart';
-import 'package:music_up/services/validation_service.dart';
 
 class TrackManagementWidget extends StatefulWidget {
   final List<Track> tracks;
@@ -113,7 +114,7 @@ class _TrackManagementWidgetState extends State<TrackManagementWidget> {
     final List<Track> updatedTracks = List.from(widget.tracks);
     updatedTracks.removeAt(index);
     _updateAllTrackNumbers(updatedTracks);
-    
+
     widget.onTracksChanged(updatedTracks);
   }
 
@@ -128,8 +129,9 @@ class _TrackManagementWidgetState extends State<TrackManagementWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SectionCard(
-      title: 'Track-Liste (${widget.tracks.length} Tracks)',
+      title: l10n.trackListTitle(widget.tracks.length),
       child: Column(
         children: [
           // Add track button
@@ -138,7 +140,7 @@ class _TrackManagementWidgetState extends State<TrackManagementWidget> {
             child: ElevatedButton.icon(
               onPressed: _addTrack,
               icon: const Icon(Icons.add),
-              label: const Text('Track hinzufügen'),
+              label: Text(l10n.addTrack),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
@@ -169,7 +171,7 @@ class _TrackManagementWidgetState extends State<TrackManagementWidget> {
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF2E4F2E),
+                              color: AppTheme.darkGreen,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Center(
@@ -187,14 +189,16 @@ class _TrackManagementWidgetState extends State<TrackManagementWidget> {
                           // Track title input
                           Expanded(
                             child: TextField(
-                              controller: index < _trackTitleControllers.length 
-                                  ? _trackTitleControllers[index] 
+                              controller: index < _trackTitleControllers.length
+                                  ? _trackTitleControllers[index]
                                   : TextEditingController(text: track.title),
+                              maxLength: 150,
                               decoration: InputDecoration(
                                 labelText: 'Track ${track.trackNumber}',
                                 border: const OutlineInputBorder(),
+                                counterText: '',
                                 contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: DS.sm, 
+                                  horizontal: DS.sm,
                                   vertical: DS.xs,
                                 ),
                               ),
@@ -209,7 +213,7 @@ class _TrackManagementWidgetState extends State<TrackManagementWidget> {
                               onPressed: () => _removeTrack(index),
                               icon: const Icon(Icons.delete_outline),
                               color: Colors.red,
-                              tooltip: 'Track entfernen',
+                              tooltip: l10n.removeTrack,
                             ),
 
                           // Drag handle
@@ -225,12 +229,12 @@ class _TrackManagementWidgetState extends State<TrackManagementWidget> {
               ),
             ),
           ] else ...[
-            const Card(
+            Card(
               child: Padding(
-                padding: EdgeInsets.all(DS.md),
+                padding: const EdgeInsets.all(DS.md),
                 child: Text(
-                  'Noch keine Tracks hinzugefügt',
-                  style: TextStyle(color: Colors.grey),
+                  l10n.noTracksAdded,
+                  style: const TextStyle(color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
               ),

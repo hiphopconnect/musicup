@@ -5,7 +5,7 @@ description: A music management tool for Linux, written in Flutter.
 maintainer: Michael Milke (Nobo)
 maintainer_email: nobo_code@posteo.de
 repository: https://github.com/hiphopconnect/musicup/
-version: 2.2.0+10
+version: 3.0.0+13
 
 publish_to: 'none' # Do not publish this package.
 
@@ -16,6 +16,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
   # STABILE Dependencies die funktionieren:
   # Core Dependencies (stable versions)
   path_provider: ^2.1.1
@@ -27,11 +30,11 @@ dependencies:
   cross_file: ^0.3.4+2
   csv: ^6.0.0
   xml: ^6.1.0
-  logger: ^1.4.0              # Stable version
   package_info_plus: ^8.1.1
   crypto: ^3.0.3
   url_launcher: ^6.3.0
   http: ^1.1.0
+  pdf: ^3.11.1
 
 dev_dependencies:
   flutter_test:
@@ -58,6 +61,7 @@ flutter_launcher_icons:
 
 
 flutter:
+  generate: true
   uses-material-design: true
   assets:
     - assets/icons/music_up_icon.png

@@ -111,7 +111,7 @@ class FolderImportService {
       // 2. MP3-Dateien lesen
       List<File> mp3Files = await getMp3Files(folderPath);
       if (mp3Files.isEmpty) {
-        throw Exception("Keine MP3-Dateien im ausgewählten Ordner gefunden.");
+        throw Exception('Keine MP3-Dateien im ausgewählten Ordner gefunden.');
       }
 
       // 3. Track-Informationen extrahieren

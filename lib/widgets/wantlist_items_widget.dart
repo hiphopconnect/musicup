@@ -1,7 +1,9 @@
 // lib/widgets/wantlist_items_widget.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/models/album_model.dart';
+import 'package:music_up/theme/app_theme.dart';
 import 'package:music_up/theme/design_system.dart';
 import 'package:music_up/widgets/loading_widget.dart';
 import 'package:music_up/widgets/animated_widgets.dart';
@@ -26,8 +28,10 @@ class WantlistItemsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     if (isLoading) {
-      return const LoadingWidget(message: 'Wantlist wird geladen...');
+      return LoadingWidget(message: l10n.wantlistLoading);
     }
 
     if (albums.isEmpty) {
@@ -37,12 +41,12 @@ class WantlistItemsWidget extends StatelessWidget {
           children: [
             const Icon(Icons.favorite_border, size: 64, color: Colors.grey),
             const SizedBox(height: DS.md),
-            const Text('Keine Einträge in der Wantlist'),
+            Text(l10n.noWantlistEntries),
             const SizedBox(height: DS.xs),
             Text(
               hasDiscogsAuth
-                  ? 'Füge Einträge zu deiner Discogs-Wantlist hinzu'
-                  : 'Bitte OAuth in den Einstellungen konfigurieren',
+                  ? l10n.addToDiscogsWantlist
+                  : l10n.configureOAuthFirst,
               style: TextStyle(color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
@@ -85,13 +89,14 @@ class WantlistItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: DS.md, vertical: DS.xs),
       elevation: 2,
       child: ListTile(
         onTap: onTap,
         leading: const CircleAvatar(
-          backgroundColor: Color(0xFF556B2F), // Olive green
+          backgroundColor: AppTheme.oliveGreen, // Olive green
           child: Icon(Icons.favorite, color: Colors.white),
         ),
         title: Text(
@@ -101,16 +106,16 @@ class WantlistItemCard extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Künstler: ${album.artist}'),
-            Row(
+            Text(l10n.artistPrefix(album.artist)),
+            Wrap(
+              spacing: DS.xs,
               children: [
-                _buildInfoChip('Jahr: ${album.year}', const Color(0xFF556B2F)),
-                const SizedBox(width: DS.xs),
-                _buildInfoChip('Medium: ${album.medium}', const Color(0xFF2E4F2E)),
+                _buildInfoChip(l10n.yearPrefix(album.year), AppTheme.oliveGreen),
+                _buildInfoChip(l10n.mediumPrefix(album.medium), AppTheme.darkGreen),
+                if (album.genre.isNotEmpty)
+                  _buildInfoChip(l10n.genrePrefix(album.genre), AppTheme.charcoal),
               ],
             ),
-            if (album.genre.isNotEmpty)
-              _buildInfoChip('Genre: ${album.genre}', const Color(0xFF2C2C2C)),
           ],
         ),
         isThreeLine: true,
@@ -119,15 +124,15 @@ class WantlistItemCard extends StatelessWidget {
           children: [
             IconButton(
               icon: const Icon(Icons.add_circle_outline),
-              color: const Color(0xFF2E4F2E), // Dark green
+              color: AppTheme.darkGreen, // Dark green
               onPressed: onAddToCollection,
-              tooltip: 'Zur Sammlung hinzufügen',
+              tooltip: l10n.addToCollection,
             ),
             IconButton(
               icon: const Icon(Icons.delete_outline),
               color: Colors.red,
               onPressed: onDelete,
-              tooltip: 'Aus Wantlist entfernen',
+              tooltip: l10n.removeFromWantlist,
             ),
           ],
         ),
@@ -143,8 +148,8 @@ class WantlistItemCard extends StatelessWidget {
           text,
           style: const TextStyle(fontSize: 12),
         ),
-        backgroundColor: color.withOpacity(0.1),
-        side: BorderSide(color: color.withOpacity(0.3)),
+        backgroundColor: color.withValues(alpha: 0.1),
+        side: BorderSide(color: color.withValues(alpha: 0.3)),
         visualDensity: VisualDensity.compact,
       ),
     );
@@ -161,6 +166,8 @@ class WantlistHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     if (hasDiscogsAuth) {
       return Container(
         margin: const EdgeInsets.all(DS.sm),
@@ -170,14 +177,14 @@ class WantlistHeader extends StatelessWidget {
           borderRadius: BorderRadius.circular(DS.xs),
           border: Border.all(color: Colors.green[200]!),
         ),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: DS.sm),
+            const Icon(Icons.check_circle, color: Colors.green),
+            const SizedBox(width: DS.sm),
             Expanded(
               child: Text(
-                'Discogs OAuth konfiguriert - Wantlist wird synchronisiert',
-                style: TextStyle(
+                l10n.discogsOAuthConfigured,
+                style: const TextStyle(
                   color: Colors.green,
                   fontWeight: FontWeight.w500,
                 ),
@@ -196,14 +203,14 @@ class WantlistHeader extends StatelessWidget {
         borderRadius: BorderRadius.circular(DS.xs),
         border: Border.all(color: Colors.orange[200]!),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.warning_outlined, color: Colors.orange),
-          SizedBox(width: DS.sm),
+          const Icon(Icons.warning_outlined, color: Colors.orange),
+          const SizedBox(width: DS.sm),
           Expanded(
             child: Text(
-              'OAuth nicht konfiguriert. Bitte in den Einstellungen einrichten, um die Wantlist zu synchronisieren.',
-              style: TextStyle(
+              l10n.oauthNotConfiguredLong,
+              style: const TextStyle(
                 color: Colors.orange,
                 fontWeight: FontWeight.w500,
               ),

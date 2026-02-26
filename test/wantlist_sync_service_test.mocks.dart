@@ -194,11 +194,23 @@ class MockDiscogsServiceUnified extends _i1.Mock
       ) as _i4.Future<void>);
 
   @override
-  _i4.Future<List<Map<String, dynamic>>> searchReleases(String? query) =>
+  _i4.Future<List<Map<String, dynamic>>> searchReleases(
+    String? query, {
+    String? artist,
+    String? releaseTitle,
+    String? format,
+    String? country,
+  }) =>
       (super.noSuchMethod(
         Invocation.method(
           #searchReleases,
           [query],
+          {
+            #artist: artist,
+            #releaseTitle: releaseTitle,
+            #format: format,
+            #country: country,
+          },
         ),
         returnValue: _i4.Future<List<Map<String, dynamic>>>.value(
             <Map<String, dynamic>>[]),

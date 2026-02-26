@@ -1,20 +1,23 @@
 // lib/widgets/loading_widget.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
+import 'package:music_up/theme/app_theme.dart';
 
 /// Wiederverwendbares Loading Widget
 class LoadingWidget extends StatelessWidget {
-  final String message;
+  final String? message;
   final double? size;
-  
+
   const LoadingWidget({
     super.key,
-    this.message = 'Laden...',
+    this.message,
     this.size,
   });
-  
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -26,7 +29,7 @@ class LoadingWidget extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            message,
+            message ?? l10n.loading,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
         ],
@@ -42,7 +45,7 @@ class SkeletonListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: const Color(0xFF2C2C2C),
+      color: AppTheme.charcoal,
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       child: ListTile(
         leading: Container(

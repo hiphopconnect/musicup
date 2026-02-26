@@ -1,17 +1,13 @@
 // lib/widgets/import_export_widget.dart
 
 import 'package:flutter/material.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/services/import_export_service.dart';
-import 'package:music_up/services/json_service.dart';
+import 'package:music_up/services/service_locator.dart';
 import 'package:music_up/theme/design_system.dart';
 
 class ImportExportWidget extends StatefulWidget {
-  final JsonService jsonService;
-
-  const ImportExportWidget({
-    super.key,
-    required this.jsonService,
-  });
+  const ImportExportWidget({super.key});
 
   @override
   State<ImportExportWidget> createState() => _ImportExportWidgetState();
@@ -23,22 +19,23 @@ class _ImportExportWidgetState extends State<ImportExportWidget> {
   @override
   void initState() {
     super.initState();
-    _importExportService = ImportExportService(widget.jsonService);
+    _importExportService = ImportExportService();
   }
 
   Future<void> _showImportExportDialog() async {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        final l10n = AppLocalizations.of(context);
         return AlertDialog(
-          title: const Text('Import / Export'),
+          title: Text(l10n.importExport),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
                 leading: const Icon(Icons.file_upload),
-                title: const Text('Import Collection'),
-                subtitle: const Text('JSON, CSV oder XML importieren'),
+                title: Text(l10n.importCollection),
+                subtitle: Text(l10n.importCollectionSubtitle),
                 onTap: () {
                   Navigator.pop(context);
                   _showImportDialog();
@@ -46,8 +43,8 @@ class _ImportExportWidgetState extends State<ImportExportWidget> {
               ),
               ListTile(
                 leading: const Icon(Icons.file_download),
-                title: const Text('Export Collection'),
-                subtitle: const Text('Als JSON, CSV oder XML exportieren'),
+                title: Text(l10n.exportCollection),
+                subtitle: Text(l10n.exportCollectionSubtitle),
                 onTap: () {
                   Navigator.pop(context);
                   _showExportDialog();
@@ -58,7 +55,7 @@ class _ImportExportWidgetState extends State<ImportExportWidget> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Abbrechen'),
+              child: Text(l10n.cancel),
             ),
           ],
         );
@@ -70,27 +67,28 @@ class _ImportExportWidgetState extends State<ImportExportWidget> {
     ImportFormat? selectedFormat = await showDialog<ImportFormat>(
       context: context,
       builder: (BuildContext context) {
+        final l10n = AppLocalizations.of(context);
         return AlertDialog(
-          title: const Text('Import Format wählen'),
+          title: Text(l10n.importFormatTitle),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
                 leading: const Icon(Icons.code),
                 title: const Text('JSON'),
-                subtitle: const Text('Standard MusicUp Format'),
+                subtitle: Text(l10n.standardFormat),
                 onTap: () => Navigator.pop(context, ImportFormat.json),
               ),
               ListTile(
                 leading: const Icon(Icons.table_chart),
                 title: const Text('CSV'),
-                subtitle: const Text('Tabellendaten'),
+                subtitle: Text(l10n.tableData),
                 onTap: () => Navigator.pop(context, ImportFormat.csv),
               ),
               ListTile(
                 leading: const Icon(Icons.data_object),
                 title: const Text('XML'),
-                subtitle: const Text('Strukturierte Daten'),
+                subtitle: Text(l10n.structuredData),
                 onTap: () => Navigator.pop(context, ImportFormat.xml),
               ),
             ],
@@ -98,7 +96,7 @@ class _ImportExportWidgetState extends State<ImportExportWidget> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Abbrechen'),
+              child: Text(l10n.cancel),
             ),
           ],
         );
@@ -114,27 +112,28 @@ class _ImportExportWidgetState extends State<ImportExportWidget> {
     ExportFormat? selectedFormat = await showDialog<ExportFormat>(
       context: context,
       builder: (BuildContext context) {
+        final l10n = AppLocalizations.of(context);
         return AlertDialog(
-          title: const Text('Export Format wählen'),
+          title: Text(l10n.exportFormatTitle),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
                 leading: const Icon(Icons.code),
                 title: const Text('JSON'),
-                subtitle: const Text('Standard MusicUp Format'),
+                subtitle: Text(l10n.standardFormat),
                 onTap: () => Navigator.pop(context, ExportFormat.json),
               ),
               ListTile(
                 leading: const Icon(Icons.table_chart),
                 title: const Text('CSV'),
-                subtitle: const Text('Für Excel/Calc'),
+                subtitle: Text(l10n.forSpreadsheet),
                 onTap: () => Navigator.pop(context, ExportFormat.csv),
               ),
               ListTile(
                 leading: const Icon(Icons.data_object),
                 title: const Text('XML'),
-                subtitle: const Text('Strukturierte Daten'),
+                subtitle: Text(l10n.structuredData),
                 onTap: () => Navigator.pop(context, ExportFormat.xml),
               ),
             ],
@@ -142,7 +141,7 @@ class _ImportExportWidgetState extends State<ImportExportWidget> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Abbrechen'),
+              child: Text(l10n.cancel),
             ),
           ],
         );
@@ -160,14 +159,21 @@ class _ImportExportWidgetState extends State<ImportExportWidget> {
           await _importExportService.importCollection(format: format);
 
       if (albums.isNotEmpty) {
-        final existing = await widget.jsonService.loadAlbums();
-        final merged = [...existing, ...albums];
-        await widget.jsonService.saveAlbums(merged);
+        final existing = await sl.jsonService.loadAlbums();
+        final existingIds = existing.map((a) => a.id).toSet();
+        final newAlbums = albums.where((a) => !existingIds.contains(a.id)).toList();
+        final merged = [...existing, ...newAlbums];
+        await sl.jsonService.saveAlbums(merged);
 
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
+          final skipped = albums.length - newAlbums.length;
+          final message = skipped > 0
+              ? l10n.albumsImportedWithSkipped(newAlbums.length, skipped)
+              : l10n.albumsImported(newAlbums.length);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${albums.length} Alben importiert'),
+              content: Text(message),
               backgroundColor: Colors.green,
             ),
           );
@@ -175,9 +181,10 @@ class _ImportExportWidgetState extends State<ImportExportWidget> {
       }
     } catch (e) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Import fehlgeschlagen: $e'),
+            content: Text(l10n.importFailed('$e')),
             backgroundColor: Colors.red,
           ),
         );
@@ -187,13 +194,14 @@ class _ImportExportWidgetState extends State<ImportExportWidget> {
 
   Future<void> _performExport(ExportFormat format) async {
     try {
-      final albums = await widget.jsonService.loadAlbums();
+      final albums = await sl.jsonService.loadAlbums();
 
       if (albums.isEmpty) {
         if (mounted) {
+          final l10n = AppLocalizations.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Keine Alben zum Exportieren vorhanden'),
+            SnackBar(
+              content: Text(l10n.noAlbumsToExport),
               backgroundColor: Colors.orange,
             ),
           );
@@ -207,10 +215,11 @@ class _ImportExportWidgetState extends State<ImportExportWidget> {
       );
 
       if (filePath != null && mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
-                Text('${albums.length} Alben exportiert nach\n$filePath'),
+                Text(l10n.albumsExported(albums.length, filePath)),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 4),
           ),
@@ -218,9 +227,10 @@ class _ImportExportWidgetState extends State<ImportExportWidget> {
       }
     } catch (e) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Export fehlgeschlagen: $e'),
+            content: Text(l10n.exportFailed('$e')),
             backgroundColor: Colors.red,
           ),
         );
@@ -230,19 +240,20 @@ class _ImportExportWidgetState extends State<ImportExportWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         ElevatedButton.icon(
           onPressed: _showImportExportDialog,
           icon: const Icon(Icons.import_export),
-          label: const Text('Import / Export'),
+          label: Text(l10n.importExport),
           style: ElevatedButton.styleFrom(
             minimumSize: const Size(double.infinity, 50),
           ),
         ),
         const SizedBox(height: DS.xs),
         Text(
-          'Unterstützte Formate: JSON, CSV, XML',
+          l10n.supportedFormats,
           style: TextStyle(color: Colors.grey[600], fontSize: 12),
           textAlign: TextAlign.center,
         ),

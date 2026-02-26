@@ -1,0 +1,151 @@
+MusicUp - Third-Party Licenses
+===============================
+
+This file lists all third-party packages used by MusicUp and their licenses.
+All packages use permissive open-source licenses that are compatible with
+proprietary distribution.
+
+
+Runtime Dependencies
+--------------------
+
+path_provider (^2.1.1)
+  License: BSD-3-Clause
+  Copyright: 2013, the Flutter authors
+  https://pub.dev/packages/path_provider
+
+file_picker (^8.1.2)
+  License: MIT
+  Copyright: 2018, Miguel Ruivo
+  https://pub.dev/packages/file_picker
+
+path (^1.8.3)
+  License: BSD-3-Clause
+  Copyright: 2014, the Dart project authors
+  https://pub.dev/packages/path
+
+shared_preferences (^2.2.2)
+  License: BSD-3-Clause
+  Copyright: 2013, the Flutter authors
+  https://pub.dev/packages/shared_preferences
+
+uuid (^4.5.0)
+  License: MIT
+  Copyright: 2021, Yulian Kuncheff
+  https://pub.dev/packages/uuid
+
+share_plus (^10.0.2)
+  License: BSD-3-Clause
+  Copyright: 2020, the Flutter authors
+  https://pub.dev/packages/share_plus
+
+cross_file (^0.3.4+2)
+  License: BSD-3-Clause
+  Copyright: see package
+  https://pub.dev/packages/cross_file
+
+csv (^6.0.0)
+  License: MIT
+  Copyright: 2014, Christian Loitsch
+  https://pub.dev/packages/csv
+
+xml (^6.1.0)
+  License: MIT
+  Copyright: 2006-2023, Lukas Renggli
+  https://pub.dev/packages/xml
+
+package_info_plus (^8.1.1)
+  License: BSD-3-Clause
+  Copyright: 2017, the Flutter authors
+  https://pub.dev/packages/package_info_plus
+
+crypto (^3.0.3)
+  License: BSD-3-Clause
+  Copyright: 2015, the Dart project authors
+  https://pub.dev/packages/crypto
+
+url_launcher (^6.3.0)
+  License: BSD-3-Clause
+  Copyright: 2013, the Flutter authors
+  https://pub.dev/packages/url_launcher
+
+http (^1.1.0)
+  License: BSD-3-Clause
+  Copyright: 2012, the Dart project authors
+  https://pub.dev/packages/http
+
+pdf (^3.11.1)
+  License: Apache-2.0
+  Copyright: 2018, David MUSIC
+  https://pub.dev/packages/pdf
+
+flutter_localizations (SDK)
+  License: BSD-3-Clause
+  Copyright: 2014, the Flutter authors
+  https://api.flutter.dev/flutter/flutter_localizations/flutter_localizations-library.html
+
+intl (any)
+  License: BSD-3-Clause
+  Copyright: 2013, the Dart project authors
+  https://pub.dev/packages/intl
+
+
+Dev Dependencies (not included in distributed builds)
+-----------------------------------------------------
+
+mockito (^5.4.4)
+  License: Apache-2.0
+  https://pub.dev/packages/mockito
+
+build_runner (^2.4.13)
+  License: BSD-3-Clause
+  https://pub.dev/packages/build_runner
+
+path_provider_platform_interface (^2.1.2)
+  License: BSD-3-Clause
+  https://pub.dev/packages/path_provider_platform_interface
+
+test (^1.24.9)
+  License: BSD-3-Clause
+  https://pub.dev/packages/test
+
+flutter_lints (^5.0.0)
+  License: BSD-3-Clause
+  https://pub.dev/packages/flutter_lints
+
+flutter_launcher_icons (^0.13.1)
+  License: MIT
+  https://pub.dev/packages/flutter_launcher_icons
+
+
+License Texts
+-------------
+
+BSD-3-Clause:
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+  1. Redistributions of source code must retain the above copyright notice,
+     this list of conditions and the following disclaimer.
+  2. Redistributions in binary form must reproduce the above copyright notice,
+     this list of conditions and the following disclaimer in the documentation
+     and/or other materials provided with the distribution.
+  3. Neither the name of the copyright holder nor the names of its contributors
+     may be used to endorse or promote products derived from this software
+     without specific prior written permission.
+
+MIT:
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions: The above copyright
+  notice and this permission notice shall be included in all copies or
+  substantial portions of the Software.
+
+Apache-2.0:
+  Licensed under the Apache License, Version 2.0. You may obtain a copy at
+  http://www.apache.org/licenses/LICENSE-2.0
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.

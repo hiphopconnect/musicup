@@ -22,17 +22,17 @@ class Album {
   });
 
   factory Album.fromMap(Map<String, dynamic> json) {
-    var tracksFromJson = json['tracks'] as List;
+    final tracksFromJson = json['tracks'] as List? ?? [];
     List<Track> tracksList =
-        tracksFromJson.map((i) => Track.fromMap(i)).toList();
+        tracksFromJson.map((i) => Track.fromMap(i as Map<String, dynamic>)).toList();
 
     return Album(
-      id: json['id'],
-      name: json['name'],
-      artist: json['artist'],
-      genre: json['genre'],
-      year: json['year'] ?? 'Unknown',
-      medium: json['medium'] ?? 'Unknown',
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? 'Unknown Title',
+      artist: json['artist']?.toString() ?? 'Unknown Artist',
+      genre: json['genre']?.toString() ?? 'Unknown Genre',
+      year: json['year']?.toString() ?? 'Unknown',
+      medium: json['medium']?.toString() ?? 'Unknown',
       digital: json['digital'] ?? false,
       tracks: tracksList,
     );
@@ -51,7 +51,22 @@ class Album {
     };
   }
 
-  // Hinzugefügte copyWith-Methode
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Album &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          artist == other.artist &&
+          genre == other.genre &&
+          year == other.year &&
+          medium == other.medium &&
+          digital == other.digital;
+
+  @override
+  int get hashCode => Object.hash(id, name, artist, genre, year, medium, digital);
+
   Album copyWith({
     String? id,
     String? name,
@@ -76,10 +91,10 @@ class Album {
 }
 
 class Track {
-  String title;
-  String trackNumber;
+  final String title;
+  final String trackNumber;
 
-  Track({required this.title, required this.trackNumber});
+  const Track({required this.title, required this.trackNumber});
 
   factory Track.fromMap(Map<String, dynamic> json) {
     return Track(
@@ -148,6 +163,17 @@ class Track {
   int compareTo(Track other) {
     return getNumericSortOrder().compareTo(other.getNumericSortOrder());
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Track &&
+          runtimeType == other.runtimeType &&
+          title == other.title &&
+          trackNumber == other.trackNumber;
+
+  @override
+  int get hashCode => Object.hash(title, trackNumber);
 }
 
 class DiscogsSearchResult {
@@ -168,6 +194,18 @@ class DiscogsSearchResult {
     required this.format,
     required this.imageUrl,
   });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DiscogsSearchResult &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          title == other.title &&
+          artist == other.artist;
+
+  @override
+  int get hashCode => Object.hash(id, title, artist);
 
   factory DiscogsSearchResult.fromJson(Map<String, dynamic> json) {
     String title = json['title']?.toString() ?? 'Unknown Title';

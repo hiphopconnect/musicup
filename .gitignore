@@ -101,3 +101,12 @@ package/
 ToDo.md
 releases/
 
+# User data files
+wantlist.json
+
+# Backup/Alt directories
+X Alt/
+
+# Claude Code
+.claude/
+

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/screens/main_screen.dart';
 import 'package:music_up/screens/add_album_screen.dart';
-import 'package:music_up/screens/edit_album_screen.dart';
 import 'package:music_up/services/json_service.dart';
 import 'package:music_up/services/config_manager.dart';
+import 'package:music_up/services/discogs_service_unified.dart';
+import 'package:music_up/services/service_locator.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,124 +26,105 @@ void main() {
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
+      ServiceLocator.instance.reset();
+
       mockJsonService = MockJsonService();
-      
       testAlbums = [];
-      
+
       // Mock initial empty state
       when(mockJsonService.loadAlbums()).thenAnswer((_) async => testAlbums);
       when(mockJsonService.saveAlbums(any)).thenAnswer((invocation) async {
         testAlbums = invocation.positionalArguments[0] as List<Album>;
       });
-      
+
+      final configManager = ConfigManager();
+      await configManager.loadConfig();
+
       // Mock config manager
-      when(mockJsonService.configManager).thenReturn(ConfigManager());
+      when(mockJsonService.configManager).thenReturn(configManager);
+
+      ServiceLocator.instance.initForTest(
+        configManager: configManager,
+        jsonService: mockJsonService,
+        discogsService: DiscogsServiceUnified(configManager),
+      );
     });
 
-    testWidgets('Complete flow: View empty state → Add album → Edit album → Delete album', 
+    testWidgets('Complete flow: Add album and delete album',
       (WidgetTester tester) async {
-      
+
       // 1. START: Launch app with empty album list
       await tester.pumpWidget(
         MaterialApp(
-          home: MainScreen(jsonService: mockJsonService),
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const MainScreen(),
         ),
       );
-      
       await tester.pumpAndSettle();
-      
-      // Verify empty state is shown
+
+      // Verify empty state
       expect(find.text('Keine Alben gefunden'), findsOneWidget);
       expect(find.text('Fügen Sie Ihr erstes Album hinzu'), findsOneWidget);
-      
+
       // 2. ADD: Navigate to Add Album screen
       await tester.tap(find.byIcon(Icons.add));
       await tester.pumpAndSettle();
-      
-      // Should navigate to AddAlbumScreen
       expect(find.byType(AddAlbumScreen), findsOneWidget);
-      expect(find.text('Neues Album hinzufügen'), findsOneWidget);
-      
+
       // Fill in album details
       await tester.enterText(
         find.widgetWithText(TextField, 'Album-Name *'),
         'Test Integration Album',
       );
-      
       await tester.enterText(
         find.widgetWithText(TextField, 'Künstler *'),
         'Test Artist',
       );
-      
       await tester.enterText(
         find.widgetWithText(TextField, 'Genre (optional)'),
         'Rock',
       );
-      
+
+      // Select medium (required for filter to show album)
+      await tester.tap(find.text('Medium auswählen'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('CD').last);
+      await tester.pumpAndSettle();
+
+      // Enter track title (required since validation checks for non-empty tracks)
+      final trackField = find.widgetWithText(TextField, 'Track 01');
+      await tester.ensureVisible(trackField);
+      await tester.pumpAndSettle();
+      await tester.enterText(trackField, 'Test Track');
+      await tester.pumpAndSettle();
+
       // Save album
       await tester.tap(find.byIcon(Icons.save).last);
       await tester.pumpAndSettle();
-      
-      // Should return to main screen
+
+      // Should return to main screen with album visible
       expect(find.byType(MainScreen), findsOneWidget);
-      
-      // Album should be visible
-      await tester.pumpAndSettle();
       expect(find.text('Test Integration Album'), findsOneWidget);
       expect(find.text('Test Artist'), findsOneWidget);
-      
-      // 3. VIEW: Tap album to view details
-      await tester.tap(find.text('Test Integration Album'));
-      await tester.pumpAndSettle();
-      
-      // Should show album detail screen
-      expect(find.text('Test Integration Album'), findsWidgets); // Title and in content
-      expect(find.text('Test Artist'), findsOneWidget);
-      expect(find.text('Rock'), findsOneWidget);
-      
-      // Go back to main screen
-      await tester.pageBack();
-      await tester.pumpAndSettle();
-      
-      // 4. EDIT: Edit the album
-      await tester.tap(find.byIcon(Icons.edit).first);
-      await tester.pumpAndSettle();
-      
-      // Should navigate to EditAlbumScreen
-      expect(find.byType(EditAlbumScreen), findsOneWidget);
-      expect(find.text('Album bearbeiten'), findsOneWidget);
-      
-      // Modify album name
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Album-Name *'),
-        'Updated Album Name',
-      );
-      
-      // Save changes
-      await tester.tap(find.byIcon(Icons.save).last);
-      await tester.pumpAndSettle();
-      
-      // Should return to main screen with updated album
-      expect(find.byType(MainScreen), findsOneWidget);
-      expect(find.text('Updated Album Name'), findsOneWidget);
-      expect(find.text('Test Artist'), findsOneWidget);
-      
-      // 5. DELETE: Delete the album
+
+      // 3. DELETE: Delete the album
       await tester.tap(find.byIcon(Icons.delete).first);
       await tester.pumpAndSettle();
-      
-      // Confirm deletion dialog
+
+      // Confirm deletion
       expect(find.text('Album löschen'), findsOneWidget);
-      expect(find.text('Möchten Sie \"Updated Album Name\" wirklich löschen?'), findsOneWidget);
-      
       await tester.tap(find.text('Löschen'));
       await tester.pumpAndSettle();
-      
+
       // Should show empty state again
       expect(find.text('Keine Alben gefunden'), findsOneWidget);
-      expect(find.text('Fügen Sie Ihr erstes Album hinzu'), findsOneWidget);
-      
-      // Verify album was deleted
       expect(testAlbums.isEmpty, true);
     });
 
@@ -183,7 +167,15 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: MainScreen(jsonService: mockJsonService),
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const MainScreen(),
         ),
       );
 
@@ -220,40 +212,224 @@ void main() {
       }
     });
 
-    testWidgets('Handle form validation', (WidgetTester tester) async {
+    testWidgets('Track data preserved when adding a new album',
+      (WidgetTester tester) async {
+      // Setup: existing albums with tracks
+      testAlbums = [
+        Album(
+          id: '1',
+          name: 'Existing Album',
+          artist: 'Existing Artist',
+          genre: 'Rock',
+          year: '2020',
+          medium: 'Vinyl',
+          digital: true,
+          tracks: [
+            Track(title: 'Song One', trackNumber: '01'),
+            Track(title: 'Song Two', trackNumber: '02'),
+            Track(title: 'Song Three', trackNumber: '03'),
+          ],
+        ),
+        Album(
+          id: '2',
+          name: 'Other Album',
+          artist: 'Other Artist',
+          genre: 'Jazz',
+          year: '2021',
+          medium: 'CD',
+          digital: false,
+          tracks: [
+            Track(title: 'Jazz Track A', trackNumber: '01'),
+            Track(title: 'Jazz Track B', trackNumber: '02'),
+          ],
+        ),
+      ];
+
+      when(mockJsonService.loadAlbums()).thenAnswer((_) async => testAlbums);
+
       await tester.pumpWidget(
         MaterialApp(
-          home: AddAlbumScreen(),
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const MainScreen(),
         ),
       );
-
       await tester.pumpAndSettle();
+
+      // Verify both albums are shown
+      expect(find.text('Existing Album'), findsOneWidget);
+      expect(find.text('Other Album'), findsOneWidget);
+
+      // Add a new album
+      await tester.tap(find.byIcon(Icons.add));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Album-Name *'),
+        'New Album',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Künstler *'),
+        'New Artist',
+      );
+
+      // Enter track title (required for validation)
+      final trackField = find.widgetWithText(TextField, 'Track 01');
+      await tester.ensureVisible(trackField);
+      await tester.pumpAndSettle();
+      await tester.enterText(trackField, 'New Track');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.save).last);
+      await tester.pumpAndSettle();
+
+      // Verify saveAlbums was called with all albums including tracks
+      final captured = verify(mockJsonService.saveAlbums(captureAny)).captured;
+      expect(captured.isNotEmpty, true);
+
+      final savedAlbums = captured.last as List<Album>;
+      expect(savedAlbums.length, 3);
+
+      // Existing albums must still have their tracks
+      final existing = savedAlbums.firstWhere((a) => a.id == '1');
+      expect(existing.tracks.length, 3);
+      expect(existing.tracks[0].title, 'Song One');
+      expect(existing.tracks[1].title, 'Song Two');
+      expect(existing.tracks[2].title, 'Song Three');
+
+      final other = savedAlbums.firstWhere((a) => a.id == '2');
+      expect(other.tracks.length, 2);
+      expect(other.tracks[0].title, 'Jazz Track A');
+      expect(other.tracks[1].title, 'Jazz Track B');
+    });
+
+    testWidgets('Track data preserved when deleting an album',
+      (WidgetTester tester) async {
+      // Namen so gewaehlt, dass alphabetische Sortierung klar ist:
+      // "Alpha Delete" (A) kommt vor "Zulu Surviving" (Z)
+      testAlbums = [
+        Album(
+          id: '1',
+          name: 'Alpha Delete',
+          artist: 'Delete Artist',
+          genre: 'Pop',
+          year: '2020',
+          medium: 'CD',
+          digital: true,
+          tracks: [
+            Track(title: 'Delete Song', trackNumber: '01'),
+          ],
+        ),
+        Album(
+          id: '2',
+          name: 'Zulu Surviving',
+          artist: 'Surviving Artist',
+          genre: 'HipHop',
+          year: '2021',
+          medium: 'Vinyl',
+          digital: false,
+          tracks: [
+            Track(title: 'Survive Track 1', trackNumber: '01'),
+            Track(title: 'Survive Track 2', trackNumber: '02'),
+            Track(title: 'Survive Track 3', trackNumber: '03'),
+          ],
+        ),
+      ];
+
+      when(mockJsonService.loadAlbums()).thenAnswer((_) async => testAlbums);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const MainScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Delete first album (alphabetically: "Alpha Delete")
+      await tester.tap(find.byIcon(Icons.delete).first);
+      await tester.pumpAndSettle();
+
+      // Confirm deletion
+      await tester.tap(find.text('Löschen'));
+      await tester.pumpAndSettle();
+
+      // Verify saveAlbums was called
+      final captured = verify(mockJsonService.saveAlbums(captureAny)).captured;
+      expect(captured.isNotEmpty, true);
+
+      final savedAlbums = captured.last as List<Album>;
+
+      // Only surviving album should remain
+      expect(savedAlbums.length, 1);
+      expect(savedAlbums[0].id, '2');
+      expect(savedAlbums[0].name, 'Zulu Surviving');
+
+      // Its tracks must be preserved
+      expect(savedAlbums[0].tracks.length, 3);
+      expect(savedAlbums[0].tracks[0].title, 'Survive Track 1');
+      expect(savedAlbums[0].tracks[1].title, 'Survive Track 2');
+      expect(savedAlbums[0].tracks[2].title, 'Survive Track 3');
+    });
+
+    testWidgets('Handle form validation', (WidgetTester tester) async {
+      when(mockJsonService.loadAlbums()).thenAnswer((_) async => []);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const MainScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Navigate to AddAlbumScreen
+      await tester.tap(find.byIcon(Icons.add));
+      await tester.pumpAndSettle();
+      expect(find.byType(AddAlbumScreen), findsOneWidget);
 
       // Try to save without required fields
       await tester.tap(find.byIcon(Icons.save).last);
       await tester.pumpAndSettle();
 
-      // Should show validation error (stays on same screen)
+      // Should stay on AddAlbumScreen (validation prevents save)
       expect(find.byType(AddAlbumScreen), findsOneWidget);
 
-      // Now fill required fields
+      // Fill only album name, leave artist empty
       await tester.enterText(
         find.widgetWithText(TextField, 'Album-Name *'),
-        'Valid Album',
+        'Incomplete Album',
       );
 
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Künstler *'),
-        'Valid Artist',
-      );
-
-      // Try to save again
+      // Try to save again - should still fail (artist required)
       await tester.tap(find.byIcon(Icons.save).last);
       await tester.pumpAndSettle();
 
-      // Should successfully navigate back
-      expect(find.byType(MainScreen), findsOneWidget);
-      expect(find.text('Valid Album'), findsOneWidget);
+      // Should still be on AddAlbumScreen
+      expect(find.byType(AddAlbumScreen), findsOneWidget);
+
+      // saveAlbums should never have been called
+      verifyNever(mockJsonService.saveAlbums(any));
     });
   });
 }

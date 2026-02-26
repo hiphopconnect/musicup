@@ -1,7 +1,9 @@
 // test/edit_album_screen_test.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:music_up/l10n/app_localizations.dart';
 import 'package:music_up/models/album_model.dart';
 import 'package:music_up/screens/edit_album_screen.dart';
 
@@ -30,6 +32,14 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Builder(
             builder: (context) => Scaffold(
               body: ElevatedButton(
@@ -55,9 +65,13 @@ void main() {
 
       // Modify album name
       await tester.enterText(find.byType(TextFormField).at(0), 'Updated Album');
+      await tester.pumpAndSettle();
 
-      // Tap Save Album
-      await tester.tap(find.text('Save Album'));
+      // Scroll to and tap save button
+      final saveButton = find.text('Änderungen speichern');
+      await tester.ensureVisible(saveButton);
+      await tester.pumpAndSettle();
+      await tester.tap(saveButton);
       await tester.pumpAndSettle();
 
       // Verify that the album was updated
