@@ -110,3 +110,4 @@ X Alt/
 # Claude Code
 .claude/
 
+*.pdf

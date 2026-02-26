@@ -94,6 +94,6 @@ echo
 echo -e "${BLUE}Next steps:${NC}"
 echo -e "  1. Test the application: ${YELLOW}flutter run${NC}"
 echo -e "  2. Commit changes: ${YELLOW}git add . && git commit -m \"Bump version to ${NEW_VERSION}\"${NC}"
-echo -e "  3. Create builds with: ${YELLOW}./create_apk.sh${NC} or ${YELLOW}./create_deb.sh${NC}"
+echo -e "  3. Create builds with: ${YELLOW}./scripts/create_apk.sh${NC} or ${YELLOW}./scripts/create_deb.sh${NC}"
 echo
 echo -e "${GREEN}Version update completed successfully!${NC}"

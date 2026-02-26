@@ -168,13 +168,13 @@ flutter test --coverage                         # Mit Coverage
 
 | Skript | Zielplattform |
 |--------|---------------|
-| `create_apk.sh` | Android APK |
-| `create_deb.sh` | Linux .deb Paket |
-| `create_exe.sh` | Windows |
-| `create_ios.sh` | iOS |
-| `create_macos.sh` | macOS |
-| `build_all_platforms.sh` | Alle Plattformen |
-| `update_version.sh` | Versionsnummer aktualisieren |
+| `scripts/create_apk.sh` | Android APK |
+| `scripts/create_deb.sh` | Linux .deb Paket |
+| `scripts/create_exe.sh` | Windows |
+| `scripts/create_ios.sh` | iOS |
+| `scripts/create_macos.sh` | macOS |
+| `scripts/build_all_platforms.sh` | Alle Plattformen |
+| `scripts/update_version.sh` | Versionsnummer aktualisieren |
 
 ### Versionierung
 

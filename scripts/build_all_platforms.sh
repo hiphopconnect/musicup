@@ -120,9 +120,9 @@ build_linux() {
         cd ../..
         
         # Create .deb package (reuse existing script)
-        if [ -f "create_deb.sh" ]; then
-            ./create_deb.sh
-            cp music-up_*.deb "$RELEASE_DIR/"
+        if [ -f "scripts/create_deb.sh" ]; then
+            ./scripts/create_deb.sh
+            cp releases/linux/music-up_*.deb "$RELEASE_DIR/"
         fi
         
         echo -e "${GREEN}✅ Linux build complete${NC}"

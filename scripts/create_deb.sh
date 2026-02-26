@@ -184,13 +184,18 @@ cp README.md package/usr/share/doc/$PACKAGE_NAME/
 echo -e "${GREEN}Compressing README.md...${NC}"
 gzip -k -f package/usr/share/doc/$PACKAGE_NAME/README.md
 
+# Create output directory
+DEB_OUTPUT_DIR="releases/linux"
+mkdir -p "$DEB_OUTPUT_DIR"
+
 # Create the .deb package
-echo -e "${GREEN}Creating the .deb package: ${PACKAGE_NAME}_${VERSION_DEB}_${ARCH}.deb${NC}"
-dpkg-deb --build package "${PACKAGE_NAME}_${VERSION_DEB}_${ARCH}.deb"
+DEB_FILE="${DEB_OUTPUT_DIR}/${PACKAGE_NAME}_${VERSION_DEB}_${ARCH}.deb"
+echo -e "${GREEN}Creating the .deb package: ${DEB_FILE}${NC}"
+dpkg-deb --build package "$DEB_FILE"
 
 # Check if the package was created successfully
-if [ -f "${PACKAGE_NAME}_${VERSION_DEB}_${ARCH}.deb" ]; then
-    echo -e "${GREEN}.deb package successfully created: ${PACKAGE_NAME}_${VERSION_DEB}_${ARCH}.deb${NC}"
+if [ -f "$DEB_FILE" ]; then
+    echo -e "${GREEN}.deb package successfully created: ${DEB_FILE}${NC}"
 else
     echo -e "${RED}Error creating the .deb package${NC}"
     exit 1
@@ -201,7 +206,7 @@ read -p "Do you want to install the .deb package now? (y/n): " install_choice
 
 if [ "$install_choice" == "y" ]; then
     echo -e "${GREEN}Installing the .deb package...${NC}"
-    sudo dpkg -i "${PACKAGE_NAME}_${VERSION_DEB}_${ARCH}.deb"
+    sudo dpkg -i "$DEB_FILE"
 
     echo -e "${GREEN}Fixing dependency issues (if any)...${NC}"
     sudo apt --fix-broken install

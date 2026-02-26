@@ -222,9 +222,9 @@ flutter build ios --release          # iOS
 ### Build-Skripte
 
 ```bash
-./create_apk.sh            # Android APK erstellen
-./create_deb.sh            # Debian-Paket erstellen
-./build_all_platforms.sh   # Alle Plattformen bauen
+./scripts/create_apk.sh            # Android APK erstellen
+./scripts/create_deb.sh            # Debian-Paket erstellen
+./scripts/build_all_platforms.sh   # Alle Plattformen bauen
 ```
 
 ## Versionierung
@@ -232,7 +232,7 @@ flutter build ios --release          # iOS
 ### Version aktualisieren
 
 ```bash
-./update_version.sh
+./scripts/update_version.sh
 ```
 
 Aktualisiert automatisch:
