@@ -8,9 +8,11 @@ class AlbumFiltersWidget extends StatelessWidget {
   final Map<String, bool> mediumFilters;
   final String digitalFilter;
   final bool isAscending;
+  final String sortField;
   final Function(String, bool) onMediumFilterChanged;
   final Function(String) onDigitalFilterChanged;
   final VoidCallback onToggleSortOrder;
+  final Function(String) onSortFieldChanged;
   final VoidCallback onResetFilters;
 
   const AlbumFiltersWidget({
@@ -18,9 +20,11 @@ class AlbumFiltersWidget extends StatelessWidget {
     required this.mediumFilters,
     required this.digitalFilter,
     required this.isAscending,
+    required this.sortField,
     required this.onMediumFilterChanged,
     required this.onDigitalFilterChanged,
     required this.onToggleSortOrder,
+    required this.onSortFieldChanged,
     required this.onResetFilters,
   });
 
@@ -73,6 +77,19 @@ class AlbumFiltersWidget extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(l10n.sorting),
+                  const SizedBox(width: DS.sm),
+                  DropdownButton<String>(
+                    value: sortField,
+                    items: [
+                      const DropdownMenuItem(value: 'Album', child: Text('Album')),
+                      DropdownMenuItem(value: 'Artist', child: Text(l10n.artist)),
+                    ],
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        onSortFieldChanged(newValue);
+                      }
+                    },
+                  ),
                   const SizedBox(width: DS.sm),
                   ElevatedButton.icon(
                     icon: Icon(

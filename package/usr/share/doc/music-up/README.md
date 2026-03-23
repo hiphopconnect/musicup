@@ -145,13 +145,13 @@ To create a `.deb` package for **MusicUp**, ensure you have all dependencies ins
 1. Make the script executable:
 
    ```bash
-   chmod +x create_deb.sh
+   chmod +x scripts/create_deb.sh
    ```
 
 2. Run the script to build the Debian package:
 
    ```bash
-   ./create_deb.sh
+   ./scripts/create_deb.sh
    ```
 
 This will generate a `.deb` package, which you can install on any Debian-based system.

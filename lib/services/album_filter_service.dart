@@ -61,11 +61,20 @@ class AlbumFilterService {
   List<Album> sortAlbums({
     required List<Album> albums,
     required bool isAscending,
+    String sortField = 'Album',
   }) {
     List<Album> sorted = List.from(albums);
-    
+
     sorted.sort((a, b) {
-      final comparison = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      int comparison;
+      if (sortField == 'Artist') {
+        comparison = a.artist.toLowerCase().compareTo(b.artist.toLowerCase());
+        if (comparison == 0) {
+          comparison = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        }
+      } else {
+        comparison = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      }
       return isAscending ? comparison : -comparison;
     });
 

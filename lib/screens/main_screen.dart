@@ -54,6 +54,7 @@ class MainScreenState extends State<MainScreen> {
   Map<String, bool> _mediumFilters = {};
   String _digitalFilter = 'All';
   bool _isAscending = true;
+  String _sortField = 'Album';
 
   // Counts for counter bar
   Map<String, int> _counts = {};
@@ -173,6 +174,7 @@ class MainScreenState extends State<MainScreen> {
     filtered = _filterService.sortAlbums(
       albums: filtered,
       isAscending: _isAscending,
+      sortField: _sortField,
     );
 
     // Calculate counts
@@ -211,10 +213,18 @@ class MainScreenState extends State<MainScreen> {
     });
   }
 
+  void _onSortFieldChanged(String field) {
+    setState(() {
+      _sortField = field;
+      _applyFiltersAndSort();
+    });
+  }
+
   void _resetFilters() {
     setState(() {
       _mediumFilters = _filterService.getDefaultMediumFilters();
       _digitalFilter = 'All';
+      _sortField = 'Album';
       _searchController.clear();
       _applyFiltersAndSort();
     });
@@ -456,9 +466,11 @@ class MainScreenState extends State<MainScreen> {
                 mediumFilters: _mediumFilters,
                 digitalFilter: _digitalFilter,
                 isAscending: _isAscending,
+                sortField: _sortField,
                 onMediumFilterChanged: _onMediumFilterChanged,
                 onDigitalFilterChanged: _onDigitalFilterChanged,
                 onToggleSortOrder: _toggleSortOrder,
+                onSortFieldChanged: _onSortFieldChanged,
                 onResetFilters: _resetFilters,
               ),
 
